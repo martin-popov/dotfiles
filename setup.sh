@@ -25,19 +25,19 @@ fi
 PKGS="zsh tmux git curl wget unzip ripgrep fzf htop"
 if [ "$SUDO" != "skip" ]; then
   if command -v apt-get >/dev/null 2>&1; then
-    log "installing packages (apt): $PKGS"
+    log "installing packages (apt): $PKGS + build-essential"
     $SUDO apt-get update -qq
     # shellcheck disable=SC2086
-    $SUDO apt-get install -y -qq $PKGS
+    $SUDO apt-get install -y -qq $PKGS build-essential
   elif command -v dnf >/dev/null 2>&1; then
-    log "installing packages (dnf): $PKGS"
-    $SUDO dnf install -y -q $PKGS
+    log "installing packages (dnf): $PKGS + gcc make"
+    $SUDO dnf install -y -q $PKGS gcc make
   elif command -v pacman >/dev/null 2>&1; then
-    log "installing packages (pacman): $PKGS"
-    $SUDO pacman -S --noconfirm --needed $PKGS
+    log "installing packages (pacman): $PKGS + base-devel"
+    $SUDO pacman -S --noconfirm --needed $PKGS base-devel
   elif command -v apk >/dev/null 2>&1; then
-    log "installing packages (apk): $PKGS"
-    $SUDO apk add --no-cache $PKGS shadow
+    log "installing packages (apk): $PKGS + build-base"
+    $SUDO apk add --no-cache $PKGS build-base shadow
   else
     warn "no known package manager — install manually: $PKGS"
   fi
@@ -65,6 +65,28 @@ if [ "$ARCH" = "x86_64" ] && [ "$SUDO" != "skip" ]; then
   fi
 elif ! command -v nvim >/dev/null 2>&1; then
   warn "skipping neovim tarball (arch=$ARCH, sudo=$SUDO) — falling back to package manager version if present"
+fi
+
+# --- fd + lazygit (binaries -> ~/.local/bin, no sudo needed) --
+gh_latest_tag() { # repo -> tag_name (e.g. v1.2.3)
+  curl -fsSL "https://api.github.com/repos/$1/releases/latest" \
+    | grep -m1 '"tag_name"' | sed -E 's/.*"(v?[^"]+)".*/\1/'
+}
+if ! command -v fd >/dev/null 2>&1 && [ "$(uname -m)" = "x86_64" ]; then
+  FD_V="$(gh_latest_tag sharkdp/fd)" && [ -n "$FD_V" ] && {
+    log "installing fd $FD_V"
+    curl -fsSL "https://github.com/sharkdp/fd/releases/download/${FD_V}/fd-${FD_V}-x86_64-unknown-linux-gnu.tar.gz" \
+      | tar -xz -C /tmp
+    mv "/tmp/fd-${FD_V}-x86_64-unknown-linux-gnu/fd" "$HOME/.local/bin/"
+    rm -rf "/tmp/fd-${FD_V}-x86_64-unknown-linux-gnu"
+  } || warn "fd install failed"
+fi
+if ! command -v lazygit >/dev/null 2>&1 && [ "$(uname -m)" = "x86_64" ]; then
+  LG_V="$(gh_latest_tag jesseduffield/lazygit)" && [ -n "$LG_V" ] && {
+    log "installing lazygit $LG_V"
+    curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/${LG_V}/lazygit_${LG_V#v}_linux_x86_64.tar.gz" \
+      | tar -xz -C "$HOME/.local/bin" lazygit
+  } || warn "lazygit install failed"
 fi
 
 # --- starship prompt -----------------------------------------
@@ -110,6 +132,14 @@ fi
 if ! command -v claude >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/claude" ]; then
   log "installing claude code"
   curl -fsSL https://claude.ai/install.sh | bash || warn "claude code install failed (fine on locked-down boxes)"
+fi
+
+# --- LazyVim (stock starter, only if no nvim config yet) -----
+if command -v nvim >/dev/null 2>&1 && [ ! -d "$HOME/.config/nvim" ]; then
+  log "installing LazyVim starter (stock)"
+  git clone --depth 1 https://github.com/LazyVim/starter "$HOME/.config/nvim"
+  rm -rf "$HOME/.config/nvim/.git"
+  nvim --headless "+Lazy! sync" +qa >/dev/null 2>&1 || warn "plugin sync had errors — run :Lazy sync inside nvim"
 fi
 
 # --- git identity (only if unset) ----------------------------
