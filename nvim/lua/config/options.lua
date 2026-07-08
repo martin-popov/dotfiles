@@ -2,9 +2,12 @@
 -- Default options that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/options.lua
 -- Add any additional options here
 
--- Match the terminal (Catppuccin Latte); without this nvim can fall back to
--- dark and load Mocha instead
-vim.o.background = "light"
+-- Follow the `theme` command's state file (catppuccin maps light -> Latte,
+-- dark -> Mocha); without an explicit value nvim can guess wrong inside tmux
+local theme_file = io.open(vim.fn.expand("~/.local/state/theme"))
+local mode = theme_file and theme_file:read("*l") or "light"
+if theme_file then theme_file:close() end
+vim.o.background = mode == "dark" and "dark" or "light"
 
 -- Cyrillic (Bulgarian Phonetic) → command-key langmap for normal/visual/operator
 -- modes. Lets you drive Vim with the keyboard physically in Bulgarian Phonetic
