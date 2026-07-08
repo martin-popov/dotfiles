@@ -7,7 +7,7 @@ One-file bootstrap for any Ubuntu/Debian (or Fedora/Arch/Alpine) box I ssh into.
 On a fresh box:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/MartinPopov/dotfiles/main/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/martin-popov/dotfiles/main/setup.sh | bash
 ```
 
 Or without hosting, straight over ssh:
