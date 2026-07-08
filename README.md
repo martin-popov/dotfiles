@@ -1,6 +1,6 @@
 # dotfiles
 
-One-file bootstrap for any Ubuntu/Debian box I ssh into.
+One-file bootstrap for any Ubuntu/Debian box I ssh into — and macOS (via brew).
 
 ## Usage
 
@@ -30,4 +30,4 @@ Idempotent — re-run any time to update (pulls latest neovim, keeps configs in 
 
 Degrades gracefully without root/sudo: system packages are skipped, starship goes to `~/.local/bin`, and if `chsh` is blocked it adds a bash→zsh handoff instead.
 
-Existing `~/.zshrc` is backed up to `~/.zshrc.pre-setup` on first run.
+Existing `~/.zshrc` is backed up to `~/.zshrc.pre-setup` on first run. Machine-specific PATHs/aliases go in `~/.zshrc.local` (sourced if present, never touched by setup).

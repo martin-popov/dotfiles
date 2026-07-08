@@ -37,10 +37,16 @@ tmux source-file "$HOME/.config/tmux/theme.conf" 2>/dev/null || true
 
 # --- nvim: flip background on every running instance (catppuccin maps
 # light->latte, dark->mocha); new instances read the state file
-for sock in "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/nvim.*.0 /tmp/nvim."${USER:-$(id -un)}"/*/nvim.*.0; do
+for sock in "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/nvim.*.0 "${TMPDIR:-/tmp}"/nvim."${USER:-$(id -un)}"/*/nvim.*.0; do
   [ -S "$sock" ] || continue
   nvim --server "$sock" --remote-expr "execute('set background=$mode')" >/dev/null 2>&1 || true
 done
+
+# --- macOS: flip system appearance — Ghostty (light:/dark: theme) and
+# Claude Code (theme=auto) follow it live
+if [ "$(uname)" = Darwin ]; then
+  osascript -e "tell application \"System Events\" to tell appearance preferences to set dark mode to $([ "$mode" = dark ] && echo true || echo false)" >/dev/null 2>&1 || true
+fi
 
 # --- Windows Terminal (WSL only): swap the default color scheme
 if [ -n "${WSL_DISTRO_NAME:-}" ] && command -v cmd.exe >/dev/null 2>&1; then

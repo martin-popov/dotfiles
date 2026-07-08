@@ -1,0 +1,5 @@
+# Ghostty config (linked to ~/.config/ghostty/config by setup.sh)
+# Catppuccin follows macOS appearance; the `theme` command flips appearance.
+theme = light:Catppuccin Latte,dark:Catppuccin Mocha
+working-directory = ~/Developer
+font-size = 15

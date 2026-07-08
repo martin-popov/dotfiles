@@ -23,7 +23,14 @@ fi
 
 # --- system packages -----------------------------------------
 PKGS="zsh tmux git curl unzip ripgrep fzf htop jq"
-if [ "$SUDO" != "skip" ]; then
+if command -v brew >/dev/null 2>&1; then # macOS — no sudo, and brew covers the binary installs below too
+  BREW_PKGS="tmux ripgrep fzf htop jq fd lazygit starship neovim" # zsh/git/curl/unzip ship with macOS
+  log "installing packages (brew): $BREW_PKGS"
+  # shellcheck disable=SC2086
+  brew install $BREW_PKGS || warn "some brew installs failed — check output above"
+  brew upgrade neovim 2>/dev/null || true # parity with the linux latest-tarball behavior
+  brew list --cask ghostty >/dev/null 2>&1 || brew install --cask ghostty || warn "ghostty install failed"
+elif [ "$SUDO" != "skip" ]; then
   if command -v apt-get >/dev/null 2>&1; then
     log "installing packages (apt): $PKGS + build-essential"
     $SUDO apt-get update -qq
@@ -44,7 +51,8 @@ GH_AUTH=()
 
 # --- neovim (latest tarball, updates in place; apt's is old) --
 ARCH="$(uname -m)"
-if [ "$ARCH" = "x86_64" ] && [ "$SUDO" != "skip" ]; then
+OS="$(uname -s)"
+if [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ] && [ "$SUDO" != "skip" ]; then
   NVIM_LATEST="$(curl -fsSL "${GH_AUTH[@]}" https://api.github.com/repos/neovim/neovim/releases/latest \
     | sed -nE 's/.*"tag_name": *"(v[^"]+)".*/\1/p' || true)"
   NVIM_HAVE=""
@@ -69,7 +77,7 @@ gh_latest_tag() { # repo -> tag_name (e.g. v1.2.3)
   curl -fsSL "${GH_AUTH[@]}" "https://api.github.com/repos/$1/releases/latest" \
     | sed -nE 's/.*"tag_name": *"(v?[^"]+)".*/\1/p'
 }
-if ! command -v fd >/dev/null 2>&1 && [ "$ARCH" = "x86_64" ]; then
+if ! command -v fd >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
   FD_V="$(gh_latest_tag sharkdp/fd)" && [ -n "$FD_V" ] && {
     log "installing fd $FD_V"
     curl -fsSL "https://github.com/sharkdp/fd/releases/download/${FD_V}/fd-${FD_V}-x86_64-unknown-linux-gnu.tar.gz" \
@@ -78,7 +86,7 @@ if ! command -v fd >/dev/null 2>&1 && [ "$ARCH" = "x86_64" ]; then
     rm -rf "/tmp/fd-${FD_V}-x86_64-unknown-linux-gnu"
   } || warn "fd install failed"
 fi
-if ! command -v lazygit >/dev/null 2>&1 && [ "$ARCH" = "x86_64" ]; then
+if ! command -v lazygit >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
   LG_V="$(gh_latest_tag jesseduffield/lazygit)" && [ -n "$LG_V" ] && {
     log "installing lazygit $LG_V"
     curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/${LG_V}/lazygit_${LG_V#v}_linux_x86_64.tar.gz" \
@@ -207,6 +215,12 @@ git config --global user.email >/dev/null 2>&1 || git config --global user.email
 log "linking ~/.config/starship.toml"
 ln -sf "$DOTS/starship.toml" "$HOME/.config/starship.toml"
 
+# --- ghostty (macOS) — catppuccin follows system appearance ---
+if [ "$OS" = "Darwin" ]; then
+  mkdir -p "$HOME/.config/ghostty"
+  ln -sf "$DOTS/ghostty" "$HOME/.config/ghostty/config"
+fi
+
 # --- theme switcher (catppuccin light/dark everywhere) --------
 ln -sf "$DOTS/theme" "$HOME/.local/bin/theme"
 [ -f "$HOME/.local/state/theme" ] || "$DOTS/theme" light
@@ -256,8 +270,9 @@ alias lsa='ls -lah'
 export PATH="$HOME/.local/bin:$PATH"
 
 # Reuse one ssh-agent across shells (keys are passphrase-protected;
-# AddKeysToAgent in ~/.ssh/config caches them on first use)
-if [ -d "$HOME/.ssh" ]; then
+# AddKeysToAgent in ~/.ssh/config caches them on first use).
+# macOS already runs a launchd agent with keychain integration — keep it.
+if [ "$(uname)" != "Darwin" ] && [ -d "$HOME/.ssh" ]; then
   export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
   ssh-add -l >/dev/null 2>&1
   if [ $? -eq 2 ]; then
@@ -265,6 +280,9 @@ if [ -d "$HOME/.ssh" ]; then
     eval "$(ssh-agent -a "$SSH_AUTH_SOCK")" >/dev/null
   fi
 fi
+
+# Machine-local extras (PATHs, aliases — kept out of the repo)
+[ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"
 
 # Prompt
 command -v starship >/dev/null 2>&1 && eval "$(starship init zsh)"
