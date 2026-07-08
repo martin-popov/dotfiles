@@ -198,6 +198,8 @@ set -as terminal-features ',xterm-256color:RGB'
 # status bar in Catppuccin Latte (crust bg, text fg, blue active window)
 set -g status-style "bg=#dce0e8,fg=#4c4f69"
 setw -g window-status-current-style "fg=#1e66f5,bold"
+set -g pane-border-style "fg=#bcc0cc"
+set -g pane-active-border-style "fg=#1e66f5"
 EOF
 
 # --- git identity (only if unset) ----------------------------
