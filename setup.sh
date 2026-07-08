@@ -24,7 +24,7 @@ fi
 # --- system packages -----------------------------------------
 PKGS="zsh tmux git curl unzip ripgrep fzf htop jq"
 if command -v brew >/dev/null 2>&1; then # macOS — no sudo, and brew covers the binary installs below too
-  BREW_PKGS="tmux ripgrep fzf htop jq fd lazygit starship neovim" # zsh/git/curl/unzip ship with macOS
+  BREW_PKGS="tmux ripgrep fzf htop jq fd lazygit gh starship neovim" # zsh/git/curl/unzip ship with macOS
   log "installing packages (brew): $BREW_PKGS"
   # shellcheck disable=SC2086
   brew install $BREW_PKGS || warn "some brew installs failed — check output above"
@@ -72,7 +72,7 @@ elif ! command -v nvim >/dev/null 2>&1; then
   warn "skipping neovim tarball (arch=$ARCH, sudo=$SUDO) — falling back to package manager version if present"
 fi
 
-# --- fd + lazygit (binaries -> ~/.local/bin, no sudo needed) --
+# --- fd + lazygit + gh (binaries -> ~/.local/bin, no sudo needed) --
 gh_latest_tag() { # repo -> tag_name (e.g. v1.2.3)
   curl -fsSL "${GH_AUTH[@]}" "https://api.github.com/repos/$1/releases/latest" \
     | sed -nE 's/.*"tag_name": *"(v?[^"]+)".*/\1/p'
@@ -92,6 +92,15 @@ if ! command -v lazygit >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x
     curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/${LG_V}/lazygit_${LG_V#v}_linux_x86_64.tar.gz" \
       | tar -xz -C "$HOME/.local/bin" lazygit
   } || warn "lazygit install failed"
+fi
+if ! command -v gh >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
+  GH_V="$(gh_latest_tag cli/cli)" && [ -n "$GH_V" ] && {
+    log "installing gh $GH_V"
+    curl -fsSL "https://github.com/cli/cli/releases/download/${GH_V}/gh_${GH_V#v}_linux_amd64.tar.gz" \
+      | tar -xz -C /tmp
+    mv "/tmp/gh_${GH_V#v}_linux_amd64/bin/gh" "$HOME/.local/bin/"
+    rm -rf "/tmp/gh_${GH_V#v}_linux_amd64"
+  } || warn "gh install failed"
 fi
 
 # --- starship prompt (~/.local/bin works with or without sudo) --
@@ -191,6 +200,11 @@ else
   warn "~/.claude/settings.json exists and jq is missing — merge manually from the repo's setup.sh"
   rm -f "$CLAUDE_SETTINGS_NEW"
 fi
+
+# --- ponytail: plugin on, but inert until /ponytail <level> ---
+log "writing ~/.config/ponytail/config.json (defaultMode: off)"
+mkdir -p "$HOME/.config/ponytail"
+printf '{\n  "defaultMode": "off"\n}\n' > "$HOME/.config/ponytail/config.json"
 
 # --- ~/.tmux.conf --------------------------------------------
 log "writing ~/.tmux.conf"
