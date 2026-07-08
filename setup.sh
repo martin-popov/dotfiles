@@ -35,12 +35,14 @@ if [ "$SUDO" != "skip" ]; then
 fi
 
 mkdir -p "$HOME/.local/bin" "$HOME/.config" "$HOME/.zsh"
+# so command -v sees tools we installed on previous runs (idempotency)
+export PATH="$HOME/.local/bin:$PATH"
 
 # --- neovim (latest tarball, updates in place; apt's is old) --
 ARCH="$(uname -m)"
 if [ "$ARCH" = "x86_64" ] && [ "$SUDO" != "skip" ]; then
   NVIM_LATEST="$(curl -fsSL https://api.github.com/repos/neovim/neovim/releases/latest \
-    | grep -m1 '"tag_name"' | sed -E 's/.*"(v[^"]+)".*/\1/' || true)"
+    | sed -nE 's/.*"tag_name": *"(v[^"]+)".*/\1/p' || true)"
   NVIM_HAVE=""
   command -v nvim >/dev/null 2>&1 && NVIM_HAVE="v$(nvim --version | head -1 | sed 's/^NVIM v//')"
   if [ -n "$NVIM_LATEST" ] && [ "$NVIM_HAVE" != "$NVIM_LATEST" ]; then
@@ -61,7 +63,7 @@ fi
 # --- fd + lazygit (binaries -> ~/.local/bin, no sudo needed) --
 gh_latest_tag() { # repo -> tag_name (e.g. v1.2.3)
   curl -fsSL "https://api.github.com/repos/$1/releases/latest" \
-    | grep -m1 '"tag_name"' | sed -E 's/.*"(v?[^"]+)".*/\1/'
+    | sed -nE 's/.*"tag_name": *"(v?[^"]+)".*/\1/p'
 }
 if ! command -v fd >/dev/null 2>&1 && [ "$ARCH" = "x86_64" ]; then
   FD_V="$(gh_latest_tag sharkdp/fd)" && [ -n "$FD_V" ] && {
@@ -166,6 +168,13 @@ else
   rm -f "$CLAUDE_SETTINGS_NEW"
 fi
 
+# --- ~/.tmux.conf --------------------------------------------
+log "writing ~/.tmux.conf"
+cat > "$HOME/.tmux.conf" <<'EOF'
+set -g mouse on
+setw -g mode-keys vi
+EOF
+
 # --- git identity (only if unset) ----------------------------
 git config --global user.name  >/dev/null 2>&1 || git config --global user.name  "$GIT_NAME"
 git config --global user.email >/dev/null 2>&1 || git config --global user.email "$GIT_EMAIL"
@@ -219,6 +228,13 @@ bindkey -M viins '^E' end-of-line
 
 # fzf keybindings (Ctrl-R fuzzy history, Ctrl-T file picker) if available
 command -v fzf >/dev/null 2>&1 && source <(fzf --zsh 2>/dev/null) || true
+
+# ls aliases (oh-my-zsh style)
+alias ls='ls --color=tty'
+alias l='ls -lah'
+alias ll='ls -lh'
+alias la='ls -lAh'
+alias lsa='ls -lah'
 
 export PATH="$HOME/.local/bin:$PATH"
 
