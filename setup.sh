@@ -22,7 +22,7 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # --- system packages -----------------------------------------
-PKGS="zsh tmux git curl wget unzip ripgrep fzf htop"
+PKGS="zsh tmux git curl wget unzip ripgrep fzf htop jq"
 if [ "$SUDO" != "skip" ]; then
   if command -v apt-get >/dev/null 2>&1; then
     log "installing packages (apt): $PKGS + build-essential"
