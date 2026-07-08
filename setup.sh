@@ -38,10 +38,14 @@ mkdir -p "$HOME/.local/bin" "$HOME/.config" "$HOME/.zsh"
 # so command -v sees tools we installed on previous runs (idempotency)
 export PATH="$HOME/.local/bin:$PATH"
 
+# auth for api.github.com calls — shared CI runner IPs get rate-limited without it
+GH_AUTH=()
+[ -n "${GITHUB_TOKEN:-}" ] && GH_AUTH=(-H "Authorization: Bearer $GITHUB_TOKEN")
+
 # --- neovim (latest tarball, updates in place; apt's is old) --
 ARCH="$(uname -m)"
 if [ "$ARCH" = "x86_64" ] && [ "$SUDO" != "skip" ]; then
-  NVIM_LATEST="$(curl -fsSL https://api.github.com/repos/neovim/neovim/releases/latest \
+  NVIM_LATEST="$(curl -fsSL "${GH_AUTH[@]}" https://api.github.com/repos/neovim/neovim/releases/latest \
     | sed -nE 's/.*"tag_name": *"(v[^"]+)".*/\1/p' || true)"
   NVIM_HAVE=""
   command -v nvim >/dev/null 2>&1 && NVIM_HAVE="v$(nvim --version | head -1 | sed 's/^NVIM v//')"
@@ -62,7 +66,7 @@ fi
 
 # --- fd + lazygit (binaries -> ~/.local/bin, no sudo needed) --
 gh_latest_tag() { # repo -> tag_name (e.g. v1.2.3)
-  curl -fsSL "https://api.github.com/repos/$1/releases/latest" \
+  curl -fsSL "${GH_AUTH[@]}" "https://api.github.com/repos/$1/releases/latest" \
     | sed -nE 's/.*"tag_name": *"(v?[^"]+)".*/\1/p'
 }
 if ! command -v fd >/dev/null 2>&1 && [ "$ARCH" = "x86_64" ]; then
