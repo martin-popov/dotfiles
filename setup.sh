@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================
 # Portable dev environment bootstrap — Martin Popov
-# Usage:  bash setup.sh
+# Targets Ubuntu/Debian (apt). Usage: bash setup.sh
 # Idempotent: safe to re-run.
 # ============================================================
 set -euo pipefail
@@ -29,17 +29,8 @@ if [ "$SUDO" != "skip" ]; then
     $SUDO apt-get update -qq
     # shellcheck disable=SC2086
     $SUDO apt-get install -y -qq $PKGS build-essential
-  elif command -v dnf >/dev/null 2>&1; then
-    log "installing packages (dnf): $PKGS + gcc make"
-    $SUDO dnf install -y -q $PKGS gcc make
-  elif command -v pacman >/dev/null 2>&1; then
-    log "installing packages (pacman): $PKGS + base-devel"
-    $SUDO pacman -S --noconfirm --needed $PKGS base-devel
-  elif command -v apk >/dev/null 2>&1; then
-    log "installing packages (apk): $PKGS + build-base"
-    $SUDO apk add --no-cache $PKGS build-base shadow
   else
-    warn "no known package manager — install manually: $PKGS"
+    warn "no apt — install manually: $PKGS + a C toolchain"
   fi
 fi
 

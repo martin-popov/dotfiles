@@ -1,6 +1,6 @@
 # dotfiles
 
-One-file bootstrap for any Ubuntu/Debian (or Fedora/Arch/Alpine) box I ssh into.
+One-file bootstrap for any Ubuntu/Debian box I ssh into.
 
 ## Usage
 
