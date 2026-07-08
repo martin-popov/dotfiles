@@ -99,8 +99,9 @@ done
 # --- nvm + node LTS + pnpm -----------------------------------
 export NVM_DIR="$HOME/.nvm"
 if [ ! -s "$NVM_DIR/nvm.sh" ]; then
-  log "installing nvm"
-  curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+  NVM_V="$(gh_latest_tag nvm-sh/nvm)" || true
+  log "installing nvm ${NVM_V:-v0.40.3 (fallback)}"
+  curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_V:-v0.40.3}/install.sh" | bash
 fi
 # shellcheck disable=SC1091
 if [ -s "$NVM_DIR/nvm.sh" ]; then
