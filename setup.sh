@@ -168,6 +168,17 @@ command -v fzf >/dev/null 2>&1 && source <(fzf --zsh 2>/dev/null) || true
 
 export PATH="$HOME/.local/bin:$PATH"
 
+# Reuse one ssh-agent across shells (keys are passphrase-protected;
+# AddKeysToAgent in ~/.ssh/config caches them on first use)
+if [ -d "$HOME/.ssh" ]; then
+  export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
+  ssh-add -l >/dev/null 2>&1
+  if [ $? -eq 2 ]; then
+    rm -f "$SSH_AUTH_SOCK"
+    eval "$(ssh-agent -a "$SSH_AUTH_SOCK")" >/dev/null
+  fi
+fi
+
 # Prompt
 command -v starship >/dev/null 2>&1 && eval "$(starship init zsh)"
 
