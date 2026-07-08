@@ -23,7 +23,7 @@ Idempotent — re-run any time to update (pulls latest neovim, keeps configs in 
 - **zsh** as default shell — vi mode, shared history, autosuggestions, syntax highlighting
 - **starship** prompt (minimal single-line: dir + git + prompt char)
 - **fzf** (fuzzy Ctrl-R / Ctrl-T), **ripgrep**, **htop**, **tmux**
-- **neovim** — latest release tarball into `/opt`, updated on re-run
+- **neovim** — latest release tarball into `/opt`, updated on re-run; config is the repo's `nvim/` (LazyVim + catppuccin, explorer right, BG phonetic langmap, lang extras), symlinked to `~/.config/nvim` with plugins pinned via `lazy-lock.json`
 - **nvm** + Node LTS + pnpm (corepack)
 - **Claude Code** + settings: vim editor mode, plugins (superpowers, context7, playwright, github, frontend-design, TS/Go/Rust LSPs, ponytail) — auto-installed by Claude Code on first run; merges into an existing settings.json without clobbering it
 - git identity (only if unset)

@@ -22,5 +22,7 @@ jobs:
         run: bash setup.sh
       - name: tools work
         run: zsh -ic "nvim --version | head -1; starship -V; fd --version; lazygit --version | head -1; rg --version | head -1; node -v; claude --version"
+      - name: nvim config loads
+        run: nvim --headless "+lua assert(vim.g.colors_name == 'catppuccin', 'config did not load')" +qa
       - name: re-run is idempotent
         run: bash setup.sh

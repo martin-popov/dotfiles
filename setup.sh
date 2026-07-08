@@ -120,12 +120,23 @@ if ! command -v claude >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/claude" ]; th
   curl -fsSL https://claude.ai/install.sh | bash || warn "claude code install failed (fine on locked-down boxes)"
 fi
 
-# --- LazyVim (stock starter, only if no nvim config yet) -----
-if command -v nvim >/dev/null 2>&1 && [ ! -d "$HOME/.config/nvim" ]; then
-  log "installing LazyVim starter (stock)"
-  git clone --depth 1 https://github.com/LazyVim/starter "$HOME/.config/nvim"
-  rm -rf "$HOME/.config/nvim/.git"
-  nvim --headless "+Lazy! sync" +qa >/dev/null 2>&1 || warn "plugin sync had errors — run :Lazy sync inside nvim"
+# --- neovim config (LazyVim + tweaks, lives in this repo) ----
+DOTS="$HOME/dotfiles"
+SELF="${BASH_SOURCE[0]:-}"
+if [ -n "$SELF" ] && [ -d "$(cd "$(dirname "$SELF")" && pwd)/nvim" ]; then
+  DOTS="$(cd "$(dirname "$SELF")" && pwd)" # running from a checkout — use it
+elif [ ! -d "$DOTS/nvim" ]; then
+  log "cloning dotfiles repo -> $DOTS"
+  git clone --depth 1 https://github.com/martin-popov/dotfiles "$DOTS"
+fi
+if [ -e "$HOME/.config/nvim" ] && [ ! -L "$HOME/.config/nvim" ]; then
+  mv "$HOME/.config/nvim" "$HOME/.config/nvim.pre-setup"
+  log "backed up existing ~/.config/nvim -> ~/.config/nvim.pre-setup"
+fi
+ln -sfn "$DOTS/nvim" "$HOME/.config/nvim"
+if command -v nvim >/dev/null 2>&1; then
+  log "restoring nvim plugins from lazy-lock.json"
+  nvim --headless "+Lazy! restore" +qa >/dev/null 2>&1 || warn "plugin restore had errors — run :Lazy restore inside nvim"
 fi
 
 # --- claude code settings (plugins, vim mode, theme) ---------
