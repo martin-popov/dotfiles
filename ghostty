@@ -3,3 +3,5 @@
 theme = light:Catppuccin Latte,dark:Catppuccin Mocha
 working-directory = ~/Developer
 font-size = 15
+font-family = JetBrains Mono
+font-style = Light
