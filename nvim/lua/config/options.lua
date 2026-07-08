@@ -2,6 +2,10 @@
 -- Default options that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/options.lua
 -- Add any additional options here
 
+-- Match the terminal (Catppuccin Latte); without this nvim can fall back to
+-- dark and load Mocha instead
+vim.o.background = "light"
+
 -- Cyrillic (Bulgarian Phonetic) → command-key langmap for normal/visual/operator
 -- modes. Lets you drive Vim with the keyboard physically in Bulgarian Phonetic
 -- layout without switching to English. Insert mode is unaffected (you still type

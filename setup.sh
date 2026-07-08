@@ -189,26 +189,24 @@ log "writing ~/.tmux.conf"
 cat > "$HOME/.tmux.conf" <<'EOF'
 set -g mouse on
 setw -g mode-keys vi
+
+# true color (RGB) passthrough — without this 24-bit colors get
+# quantized to the 256-color palette (Latte #EFF1F5 -> #EEEEEE)
+set -g default-terminal "tmux-256color"
+set -as terminal-features ',xterm-256color:RGB'
+
+# status bar in Catppuccin Latte (crust bg, text fg, blue active window)
+set -g status-style "bg=#dce0e8,fg=#4c4f69"
+setw -g window-status-current-style "fg=#1e66f5,bold"
 EOF
 
 # --- git identity (only if unset) ----------------------------
 git config --global user.name  >/dev/null 2>&1 || git config --global user.name  "$GIT_NAME"
 git config --global user.email >/dev/null 2>&1 || git config --global user.email "$GIT_EMAIL"
 
-# --- ~/.config/starship.toml ---------------------------------
-log "writing ~/.config/starship.toml"
-cat > "$HOME/.config/starship.toml" <<'EOF'
-# Put everything on one line — no newline before the input
-add_newline = false
-
-# Define the exact order so it reads left-to-right on that line
-format = "$directory$git_branch$git_status$character"
-
-[character]
-vimcmd_symbol = "[N](bold green)"
-success_symbol = "[❯](bold green)"
-error_symbol = "[❯](bold red)"
-EOF
+# --- ~/.config/starship.toml (lives in this repo) ------------
+log "linking ~/.config/starship.toml"
+ln -sf "$DOTS/starship.toml" "$HOME/.config/starship.toml"
 
 # --- ~/.zshrc ------------------------------------------------
 if [ -f "$HOME/.zshrc" ] && [ ! -f "$HOME/.zshrc.pre-setup" ]; then
