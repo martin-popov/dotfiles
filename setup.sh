@@ -22,7 +22,7 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # --- system packages -----------------------------------------
-PKGS="zsh tmux git curl wget unzip ripgrep fzf htop jq"
+PKGS="zsh tmux git curl unzip ripgrep fzf htop jq"
 if [ "$SUDO" != "skip" ]; then
   if command -v apt-get >/dev/null 2>&1; then
     log "installing packages (apt): $PKGS + build-essential"
@@ -72,7 +72,7 @@ gh_latest_tag() { # repo -> tag_name (e.g. v1.2.3)
   curl -fsSL "https://api.github.com/repos/$1/releases/latest" \
     | grep -m1 '"tag_name"' | sed -E 's/.*"(v?[^"]+)".*/\1/'
 }
-if ! command -v fd >/dev/null 2>&1 && [ "$(uname -m)" = "x86_64" ]; then
+if ! command -v fd >/dev/null 2>&1 && [ "$ARCH" = "x86_64" ]; then
   FD_V="$(gh_latest_tag sharkdp/fd)" && [ -n "$FD_V" ] && {
     log "installing fd $FD_V"
     curl -fsSL "https://github.com/sharkdp/fd/releases/download/${FD_V}/fd-${FD_V}-x86_64-unknown-linux-gnu.tar.gz" \
@@ -81,7 +81,7 @@ if ! command -v fd >/dev/null 2>&1 && [ "$(uname -m)" = "x86_64" ]; then
     rm -rf "/tmp/fd-${FD_V}-x86_64-unknown-linux-gnu"
   } || warn "fd install failed"
 fi
-if ! command -v lazygit >/dev/null 2>&1 && [ "$(uname -m)" = "x86_64" ]; then
+if ! command -v lazygit >/dev/null 2>&1 && [ "$ARCH" = "x86_64" ]; then
   LG_V="$(gh_latest_tag jesseduffield/lazygit)" && [ -n "$LG_V" ] && {
     log "installing lazygit $LG_V"
     curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/${LG_V}/lazygit_${LG_V#v}_linux_x86_64.tar.gz" \
@@ -89,26 +89,14 @@ if ! command -v lazygit >/dev/null 2>&1 && [ "$(uname -m)" = "x86_64" ]; then
   } || warn "lazygit install failed"
 fi
 
-# --- starship prompt -----------------------------------------
-if ! command -v starship >/dev/null 2>&1; then
-  log "installing starship"
-  if [ "$SUDO" != "skip" ]; then
-    curl -sS https://starship.rs/install.sh | sh -s -- -y
-  else
-    curl -sS https://starship.rs/install.sh | sh -s -- -y -b "$HOME/.local/bin"
-  fi
-else
-  log "starship already installed"
-fi
+# --- starship prompt (~/.local/bin works with or without sudo) --
+command -v starship >/dev/null 2>&1 \
+  || curl -sS https://starship.rs/install.sh | sh -s -- -y -b "$HOME/.local/bin"
 
 # --- zsh plugins ---------------------------------------------
 for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
-  if [ ! -d "$HOME/.zsh/$plugin" ]; then
-    log "cloning $plugin"
-    git clone --depth 1 "https://github.com/zsh-users/$plugin" "$HOME/.zsh/$plugin"
-  else
-    log "$plugin already present (git -C ~/.zsh/$plugin pull to update)"
-  fi
+  [ -d "$HOME/.zsh/$plugin" ] \
+    || git clone --depth 1 "https://github.com/zsh-users/$plugin" "$HOME/.zsh/$plugin"
 done
 
 # --- nvm + node LTS + pnpm -----------------------------------
