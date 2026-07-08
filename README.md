@@ -25,7 +25,7 @@ Idempotent — re-run any time to update (pulls latest neovim, keeps configs in 
 - **fzf** (fuzzy Ctrl-R / Ctrl-T), **ripgrep**, **htop**, **tmux**
 - **neovim** — latest release tarball into `/opt`, updated on re-run
 - **nvm** + Node LTS + pnpm (corepack)
-- **Claude Code**
+- **Claude Code** + settings: vim editor mode, plugins (superpowers, context7, playwright, github, frontend-design, TS/Go/Rust LSPs, ponytail) — auto-installed by Claude Code on first run; merges into an existing settings.json without clobbering it
 - git identity (only if unset)
 
 Degrades gracefully without root/sudo: system packages are skipped, starship goes to `~/.local/bin`, and if `chsh` is blocked it adds a bash→zsh handoff instead.

@@ -142,6 +142,51 @@ if command -v nvim >/dev/null 2>&1 && [ ! -d "$HOME/.config/nvim" ]; then
   nvim --headless "+Lazy! sync" +qa >/dev/null 2>&1 || warn "plugin sync had errors — run :Lazy sync inside nvim"
 fi
 
+# --- claude code settings (plugins, vim mode, theme) ---------
+# Claude Code reconciles enabledPlugins/extraKnownMarketplaces on startup,
+# so listing them here is enough — plugins auto-install on first run.
+mkdir -p "$HOME/.claude"
+CLAUDE_SETTINGS_NEW="$(mktemp)"
+cat > "$CLAUDE_SETTINGS_NEW" <<'EOF'
+{
+  "model": "claude-fable-5[1m]",
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "ponytail@ponytail": true
+  },
+  "extraKnownMarketplaces": {
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
+      }
+    }
+  },
+  "theme": "auto",
+  "editorMode": "vim"
+}
+EOF
+if [ ! -f "$HOME/.claude/settings.json" ]; then
+  log "writing ~/.claude/settings.json"
+  mv "$CLAUDE_SETTINGS_NEW" "$HOME/.claude/settings.json"
+elif command -v jq >/dev/null 2>&1; then
+  log "merging claude code settings into existing ~/.claude/settings.json"
+  jq -s '.[0] * .[1]' "$HOME/.claude/settings.json" "$CLAUDE_SETTINGS_NEW" \
+    > "$HOME/.claude/settings.json.tmp" \
+    && mv "$HOME/.claude/settings.json.tmp" "$HOME/.claude/settings.json"
+  rm -f "$CLAUDE_SETTINGS_NEW"
+else
+  warn "~/.claude/settings.json exists and jq is missing — merge manually from the repo's setup.sh"
+  rm -f "$CLAUDE_SETTINGS_NEW"
+fi
+
 # --- git identity (only if unset) ----------------------------
 git config --global user.name  >/dev/null 2>&1 || git config --global user.name  "$GIT_NAME"
 git config --global user.email >/dev/null 2>&1 || git config --global user.email "$GIT_EMAIL"
