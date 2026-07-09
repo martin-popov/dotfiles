@@ -25,7 +25,7 @@ fi
 # Interactive checklist (Enter = everything). Non-interactive runs
 # (curl | bash, CI) install everything; preselect with e.g.
 #   COMPONENTS="base go" bash setup.sh
-COMPONENTS_ALL="base node neovim cli starship claude go rust"
+COMPONENTS_ALL="base node neovim cli starship claude go rust macos"
 if [ -z "${COMPONENTS:-}" ]; then
   if [ -t 0 ]; then
     cat <<'MENU'
@@ -36,8 +36,9 @@ What should this box get?
   4) cli       fd, lazygit, gh
   5) starship  prompt
   6) claude    claude code + plugin settings
-  7) go        latest toolchain -> /usr/local/go
+  7) go        latest toolchain -> /usr/local/go (brew on macOS)
   8) rust      rustup + stable toolchain
+  9) macos     system defaults: keyboard/dock/finder (Darwin only)
 MENU
     read -rp "Numbers separated by spaces [Enter = all]: " PICK
     COMPONENTS=""
@@ -51,6 +52,7 @@ MENU
         6) COMPONENTS+=" claude" ;;
         7) COMPONENTS+=" go" ;;
         8) COMPONENTS+=" rust" ;;
+        9) COMPONENTS+=" macos" ;;
         *) warn "unknown option: $n" ;;
       esac
     done
@@ -72,6 +74,8 @@ if command -v brew >/dev/null 2>&1; then # macOS — no sudo, and brew covers th
   want cli      && BREW_PKGS+=" fd lazygit gh"
   want starship && BREW_PKGS+=" starship"
   want neovim   && BREW_PKGS+=" neovim"
+  want go       && BREW_PKGS+=" go"
+  want macos    && BREW_PKGS+=" dockutil"
   if [ -n "$BREW_PKGS" ]; then
     log "installing packages (brew):$BREW_PKGS"
     # shellcheck disable=SC2086
@@ -202,7 +206,7 @@ if want go && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ] && [ "$SUDO" != "ski
   else
     log "go up to date: ${GO_HAVE:-unknown}"
   fi
-elif want go; then
+elif want go && ! command -v go >/dev/null 2>&1; then # macOS gets go via brew above
   warn "skipping go (arch=$ARCH, sudo=$SUDO) — install manually from https://go.dev/dl/"
 fi
 
@@ -319,6 +323,39 @@ if [ "$OS" = "Darwin" ]; then
   ln -sf "$DOTS/ghostty" "$HOME/.config/ghostty/config"
 fi
 
+# --- macos system defaults (harmless to re-run) ---------------
+if want macos && [ "$OS" = "Darwin" ]; then
+  log "applying macOS defaults (keyboard/dock/finder)"
+  # keyboard: fast repeat, full keyboard UI navigation
+  defaults write NSGlobalDomain KeyRepeat -int 2
+  defaults write NSGlobalDomain InitialKeyRepeat -int 15
+  defaults write NSGlobalDomain AppleKeyboardUIMode -int 2
+  # dock: autohide instantly, big tiles + magnification, no recents,
+  # keep Spaces order, minimize into app icon, no bottom-right hot corner
+  defaults write com.apple.dock autohide -bool true
+  defaults write com.apple.dock autohide-delay -float 0
+  defaults write com.apple.dock tilesize -int 93
+  defaults write com.apple.dock magnification -bool true
+  defaults write com.apple.dock mru-spaces -bool false
+  defaults write com.apple.dock show-recents -bool false
+  defaults write com.apple.dock minimize-to-application -bool true
+  defaults write com.apple.dock wvous-br-corner -int 1
+  # finder: path bar, list view, folders first, new windows open Desktop
+  defaults write com.apple.finder ShowPathbar -bool true
+  defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
+  defaults write com.apple.finder _FXSortFoldersFirst -bool true
+  defaults write com.apple.finder NewWindowTarget -string "PfDe"
+  # dock contents: Zen + Zed only
+  if command -v dockutil >/dev/null 2>&1; then
+    dockutil --remove all --no-restart || true
+    [ -d /Applications/Zen.app ] && dockutil --add /Applications/Zen.app --no-restart
+    [ -d /Applications/Zed.app ] && dockutil --add /Applications/Zed.app --no-restart
+  else
+    warn "dockutil not installed — skipping Dock contents"
+  fi
+  killall Dock Finder 2>/dev/null || true
+fi
+
 # --- theme switcher (catppuccin light/dark everywhere) --------
 ln -sf "$DOTS/theme" "$HOME/.local/bin/theme"
 [ -f "$HOME/.local/state/theme" ] || "$DOTS/theme" light
@@ -332,9 +369,9 @@ log "writing ~/.zshrc"
 cat > "$HOME/.zshrc" <<'EOF'
 # History (so autosuggestions have something to suggest)
 HISTFILE=~/.zsh_history
-HISTSIZE=10000
-SAVEHIST=10000
-setopt SHARE_HISTORY HIST_IGNORE_ALL_DUPS INC_APPEND_HISTORY
+HISTSIZE=50000
+SAVEHIST=50000
+setopt SHARE_HISTORY HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE INC_APPEND_HISTORY
 
 # Completion menu
 autoload -Uz compinit && compinit
@@ -358,8 +395,15 @@ bindkey -M viins '^E' end-of-line
 # fzf keybindings (Ctrl-R fuzzy history, Ctrl-T file picker) if available
 command -v fzf >/dev/null 2>&1 && source <(fzf --zsh 2>/dev/null) || true
 
-# ls aliases (oh-my-zsh style)
-alias ls='ls --color=tty'
+# editor
+if command -v nvim >/dev/null 2>&1; then
+  export EDITOR=nvim
+  alias vim=nvim
+fi
+
+# ls aliases (oh-my-zsh style); GNU ls needs --color, BSD/macOS uses CLICOLOR
+export CLICOLOR=1
+ls --color=tty ~ >/dev/null 2>&1 && alias ls='ls --color=tty'
 alias l='ls -lah'
 alias ll='ls -lh'
 alias la='ls -lAh'

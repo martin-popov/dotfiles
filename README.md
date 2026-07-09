@@ -34,8 +34,9 @@ COMPONENTS="base go" bash setup.sh
 - **cli** — fd, lazygit, gh (release binaries into `~/.local/bin`)
 - **starship** prompt (minimal single-line: dir + git + prompt char)
 - **claude** — Claude Code + settings: vim editor mode, plugins (superpowers, context7, playwright, github, frontend-design, TS/Go/Rust LSPs, ponytail) — auto-installed by Claude Code on first run; merges into an existing settings.json without clobbering it
-- **go** — latest official tarball into `/usr/local/go`, updated on re-run
+- **go** — latest official tarball into `/usr/local/go`, updated on re-run (brew on macOS)
 - **rust** — rustup + stable toolchain into `~/.cargo`
+- **macos** — system defaults (fast key repeat, dock autohide/size/no-recents, finder path bar + list view, dock contents via dockutil); no-op on Linux
 
 Config files (`.zshrc`, `.tmux.conf`, nvim/starship links, git identity if unset)
 are always written regardless of selection.
