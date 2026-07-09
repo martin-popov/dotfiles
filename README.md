@@ -23,7 +23,7 @@ Non-interactive runs (`curl | bash`, CI, ssh heredoc) install everything;
 preselect instead with e.g.:
 
 ```bash
-COMPONENTS="base go" bash setup.sh
+bash setup.sh base go        # or: COMPONENTS="base go" bash setup.sh
 ```
 
 ## Components

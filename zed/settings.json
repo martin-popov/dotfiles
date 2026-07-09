@@ -11,7 +11,7 @@
     },
     "edit_predictions": {
         "provider": "copilot",
-        "disabled_globs": ["/Users/martinpopov/Developer/aoc-2025/**", "*.env"],
+        "disabled_globs": ["*.env"],
     },
     "vim_mode": true,
     "relative_line_numbers": "enabled",

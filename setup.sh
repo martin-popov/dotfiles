@@ -26,6 +26,10 @@ fi
 # (curl | bash, CI) install everything; preselect with e.g.
 #   COMPONENTS="base go" bash setup.sh
 COMPONENTS_ALL="base node neovim cli starship claude go rust macos macapps"
+[ $# -gt 0 ] && COMPONENTS="$*" # or positionally: bash setup.sh go rust
+for c in ${COMPONENTS:-}; do
+  case " $COMPONENTS_ALL " in *" $c "*) ;; *) warn "unknown component: $c" ;; esac
+done
 if [ -z "${COMPONENTS:-}" ]; then
   if [ -t 0 ]; then
     cat <<'MENU'
@@ -134,30 +138,26 @@ gh_latest_tag() { # repo -> tag_name (e.g. v1.2.3)
   curl -fsSL "${GH_AUTH[@]}" "https://api.github.com/repos/$1/releases/latest" \
     | sed -nE 's/.*"tag_name": *"(v?[^"]+)".*/\1/p'
 }
-if want cli && ! command -v fd >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
-  FD_V="$(gh_latest_tag sharkdp/fd)" && [ -n "$FD_V" ] && {
-    log "installing fd $FD_V"
-    curl -fsSL "https://github.com/sharkdp/fd/releases/download/${FD_V}/fd-${FD_V}-x86_64-unknown-linux-gnu.tar.gz" \
-      | tar -xz -C /tmp
-    mv "/tmp/fd-${FD_V}-x86_64-unknown-linux-gnu/fd" "$HOME/.local/bin/"
-    rm -rf "/tmp/fd-${FD_V}-x86_64-unknown-linux-gnu"
-  } || warn "fd install failed"
-fi
-if want cli && ! command -v lazygit >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
-  LG_V="$(gh_latest_tag jesseduffield/lazygit)" && [ -n "$LG_V" ] && {
-    log "installing lazygit $LG_V"
-    curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/${LG_V}/lazygit_${LG_V#v}_linux_x86_64.tar.gz" \
-      | tar -xz -C "$HOME/.local/bin" lazygit
-  } || warn "lazygit install failed"
-fi
-if want cli && ! command -v gh >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
-  GH_V="$(gh_latest_tag cli/cli)" && [ -n "$GH_V" ] && {
-    log "installing gh $GH_V"
-    curl -fsSL "https://github.com/cli/cli/releases/download/${GH_V}/gh_${GH_V#v}_linux_amd64.tar.gz" \
-      | tar -xz -C /tmp
-    mv "/tmp/gh_${GH_V#v}_linux_amd64/bin/gh" "$HOME/.local/bin/"
-    rm -rf "/tmp/gh_${GH_V#v}_linux_amd64"
-  } || warn "gh install failed"
+fetch_bin() { # <name> <repo> <asset printf pattern> <full|strip — version form in asset>
+  local name="$1" repo="$2" pattern="$3" tag v dir
+  command -v "$name" >/dev/null 2>&1 && return 0
+  tag="$(gh_latest_tag "$repo")" || true
+  [ -n "$tag" ] || { warn "$name install failed (no release tag)"; return 0; }
+  v="$tag"; [ "$4" = strip ] && v="${tag#v}"
+  log "installing $name $tag"
+  dir="$(mktemp -d)"
+  # shellcheck disable=SC2059
+  if curl -fsSL "https://github.com/$repo/releases/download/$tag/$(printf "$pattern" "$v")" | tar -xz -C "$dir"; then
+    find "$dir" -type f -name "$name" -exec mv {} "$HOME/.local/bin/" \;
+  else
+    warn "$name install failed"
+  fi
+  rm -rf "$dir"
+}
+if want cli && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
+  fetch_bin fd      sharkdp/fd            'fd-%s-x86_64-unknown-linux-gnu.tar.gz' full
+  fetch_bin lazygit jesseduffield/lazygit 'lazygit_%s_linux_x86_64.tar.gz'        strip
+  fetch_bin gh      cli/cli               'gh_%s_linux_amd64.tar.gz'              strip
 fi
 
 # --- starship prompt (~/.local/bin works with or without sudo) --
@@ -248,8 +248,7 @@ fi
 # so listing them here is enough — plugins auto-install on first run.
 if want claude; then
 mkdir -p "$HOME/.claude"
-CLAUDE_SETTINGS_NEW="$(mktemp)"
-cat > "$CLAUDE_SETTINGS_NEW" <<'EOF'
+CLAUDE_SETTINGS="$(cat <<'EOF'
 {
   "model": "claude-fable-5[1m]",
   "enabledPlugins": {
@@ -279,18 +278,18 @@ cat > "$CLAUDE_SETTINGS_NEW" <<'EOF'
   "agentPushNotifEnabled": true
 }
 EOF
+)"
 if [ ! -f "$HOME/.claude/settings.json" ]; then
   log "writing ~/.claude/settings.json"
-  mv "$CLAUDE_SETTINGS_NEW" "$HOME/.claude/settings.json"
+  printf '%s\n' "$CLAUDE_SETTINGS" > "$HOME/.claude/settings.json"
 elif command -v jq >/dev/null 2>&1; then
   log "merging claude code settings into existing ~/.claude/settings.json"
-  jq -s '.[0] * .[1]' "$HOME/.claude/settings.json" "$CLAUDE_SETTINGS_NEW" \
+  printf '%s' "$CLAUDE_SETTINGS" | jq -s '.[0] * .[1]' "$HOME/.claude/settings.json" - \
     > "$HOME/.claude/settings.json.tmp" \
     && mv "$HOME/.claude/settings.json.tmp" "$HOME/.claude/settings.json"
-  rm -f "$CLAUDE_SETTINGS_NEW"
 else
+  # shellcheck disable=SC2088 # the ~ is message prose, not a path
   warn "~/.claude/settings.json exists and jq is missing — merge manually from the repo's setup.sh"
-  rm -f "$CLAUDE_SETTINGS_NEW"
 fi
 
 # --- ponytail: plugin on, but inert until /ponytail <level> ---
