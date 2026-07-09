@@ -1,0 +1,121 @@
+{
+    // Blazingly fast
+    "outline_panel": {
+        "dock": "left"
+    },
+    "collaboration_panel": {
+        "dock": "left"
+    },
+    "git_panel": {
+        "dock": "left"
+    },
+    "edit_predictions": {
+        "provider": "copilot",
+        "disabled_globs": ["/Users/martinpopov/Developer/aoc-2025/**", "*.env"],
+    },
+    "vim_mode": true,
+    "relative_line_numbers": "enabled",
+
+    // Navigation
+    "project_panel": {
+        "dock": "right",
+    },
+
+    // Spy
+    "telemetry": {
+        "diagnostics": false,
+        "metrics": false,
+    },
+
+    // AI
+    "agent": {
+        "inline_assistant_model": {
+            "provider": "copilot_chat",
+            "model": "gpt-5-mini",
+        },
+        "dock": "left",
+    },
+
+    // Languages
+    "languages": {
+        "Astro": {
+            "language_servers": ["eslint", "..."],
+            "code_actions_on_format": {
+                "source.fixAll.eslint": true,
+                "source.organizeImports": true,
+            },
+        },
+        "JavaScript": {
+            "code_actions_on_format": {
+                "source.fixAll.eslint": true,
+            },
+            "linked_edits": false,
+        },
+        "TypeScript": {
+            "code_actions_on_format": {
+                "source.fixAll.eslint": true,
+            },
+            "linked_edits": false,
+        },
+        "TSX": {
+            "code_actions_on_format": {
+                "source.fixAll.eslint": true,
+            },
+            "linked_edits": false,
+        },
+        "SQL": {
+            "formatter": {
+                "external": {
+                    "command": "sql-formatter",
+                    "arguments": ["--language", "postgresql"],
+                },
+            },
+        },
+    },
+    "lsp": {
+        "vtsls": {
+            "settings": {
+                "typescript": {
+                    "preferences": {
+                        "importModuleSpecifier": "non-relative",
+                    },
+                },
+            },
+        },
+        "rust-analyzer": {
+            "initialization_options": {
+                "check": {
+                    "command": "clippy", // rust-analyzer.check.command (default: "check")
+                },
+            },
+        },
+        "basedpyright": {
+            "settings": {
+                "basedpyright.analysis": {
+                    "typeCheckingMode": "basic",
+                    "diagnosticMode": "openFilesOnly",
+                },
+            },
+        },
+        "typos": {
+            "initialization_options": {
+                "diagnosticSeverity": "Hint",
+            },
+        },
+    },
+
+    // Editor
+    "soft_wrap": "editor_width",
+    "tab_size": 4,
+    "confirm_quit": true,
+
+    // Theming
+    "buffer_font_weight": 300,
+    "buffer_font_family": "JetBrains Mono",
+    "icon_theme": "Material Icon Theme",
+    "theme": {
+        "mode": "system",
+        "light": "Catppuccin Latte",
+        "dark": "Catppuccin Mocha",
+    },
+}

@@ -37,9 +37,12 @@ COMPONENTS="base go" bash setup.sh
 - **go** — latest official tarball into `/usr/local/go`, updated on re-run (brew on macOS)
 - **rust** — rustup + stable toolchain into `~/.cargo`
 - **macos** — system defaults (fast key repeat, dock autohide/size/no-recents, finder path bar + list view, dock contents via dockutil); no-op on Linux
+- **macapps** — `brew bundle` of the Brewfile: casks (zed, zen, raycast, karabiner-elements, obsidian, docker-desktop, …) + mac-only CLI extras (git-lfs, uv, mas, xcode-build-server); no-op on Linux
 
-Config files (`.zshrc`, `.tmux.conf`, nvim/starship links, git identity if unset)
-are always written regardless of selection.
+Config files (`.zshrc`, `.tmux.conf`, nvim/starship/zed links, karabiner +
+ghostty links on macOS, `~/.ssh/config` if missing, git identity if unset)
+are always written regardless of selection. Private ssh hosts belong in the
+untracked `~/.ssh/config.local`.
 
 Degrades gracefully without root/sudo: system packages are skipped, starship goes to `~/.local/bin`, and if `chsh` is blocked it adds a bash→zsh handoff instead.
 

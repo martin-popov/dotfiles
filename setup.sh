@@ -25,7 +25,7 @@ fi
 # Interactive checklist (Enter = everything). Non-interactive runs
 # (curl | bash, CI) install everything; preselect with e.g.
 #   COMPONENTS="base go" bash setup.sh
-COMPONENTS_ALL="base node neovim cli starship claude go rust macos"
+COMPONENTS_ALL="base node neovim cli starship claude go rust macos macapps"
 if [ -z "${COMPONENTS:-}" ]; then
   if [ -t 0 ]; then
     cat <<'MENU'
@@ -39,6 +39,7 @@ What should this box get?
   7) go        latest toolchain -> /usr/local/go (brew on macOS)
   8) rust      rustup + stable toolchain
   9) macos     system defaults: keyboard/dock/finder (Darwin only)
+ 10) macapps   brew bundle: casks + mac CLI extras (Darwin only)
 MENU
     read -rp "Numbers separated by spaces [Enter = all]: " PICK
     COMPONENTS=""
@@ -53,6 +54,7 @@ MENU
         7) COMPONENTS+=" go" ;;
         8) COMPONENTS+=" rust" ;;
         9) COMPONENTS+=" macos" ;;
+        10) COMPONENTS+=" macapps" ;;
         *) warn "unknown option: $n" ;;
       esac
     done
@@ -259,6 +261,7 @@ cat > "$CLAUDE_SETTINGS_NEW" <<'EOF'
     "typescript-lsp@claude-plugins-official": true,
     "gopls-lsp@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
+    "swift-lsp@claude-plugins-official": true,
     "ponytail@ponytail": true
   },
   "extraKnownMarketplaces": {
@@ -270,7 +273,10 @@ cat > "$CLAUDE_SETTINGS_NEW" <<'EOF'
     }
   },
   "theme": "auto",
-  "editorMode": "vim"
+  "editorMode": "vim",
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "xhigh",
+  "agentPushNotifEnabled": true
 }
 EOF
 if [ ! -f "$HOME/.claude/settings.json" ]; then
@@ -309,6 +315,22 @@ set -as terminal-features ',xterm-256color:RGB'
 source-file -q ~/.config/tmux/theme.conf
 EOF
 
+# --- ~/.ssh/config (only if missing — keys/hosts are per-machine) --
+# AddKeysToAgent pairs with the shared ssh-agent block in .zshrc; private
+# host entries live in the untracked ~/.ssh/config.local
+if [ ! -e "$HOME/.ssh/config" ]; then
+  log "writing ~/.ssh/config"
+  mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+  {
+    echo "Include ~/.ssh/config.local"
+    echo ""
+    echo "Host *"
+    echo "  AddKeysToAgent yes"
+    [ "$OS" = "Darwin" ] && echo "  UseKeychain yes" # invalid option on Linux ssh
+  } > "$HOME/.ssh/config"
+  chmod 600 "$HOME/.ssh/config"
+fi
+
 # --- git identity (only if unset) ----------------------------
 git config --global user.name  >/dev/null 2>&1 || git config --global user.name  "$GIT_NAME"
 git config --global user.email >/dev/null 2>&1 || git config --global user.email "$GIT_EMAIL"
@@ -321,6 +343,22 @@ ln -sf "$DOTS/starship.toml" "$HOME/.config/starship.toml"
 if [ "$OS" = "Darwin" ]; then
   mkdir -p "$HOME/.config/ghostty"
   ln -sf "$DOTS/ghostty" "$HOME/.config/ghostty/config"
+fi
+
+# --- zed (all platforms) + karabiner (macOS) configs ----------
+mkdir -p "$HOME/.config/zed"
+ln -sf "$DOTS/zed/settings.json" "$HOME/.config/zed/settings.json"
+ln -sf "$DOTS/zed/keymap.json" "$HOME/.config/zed/keymap.json"
+if [ "$OS" = "Darwin" ]; then
+  mkdir -p "$HOME/.config/karabiner"
+  ln -sf "$DOTS/karabiner/karabiner.json" "$HOME/.config/karabiner/karabiner.json"
+fi
+
+# --- macos apps (brew bundle) ----------------------------------
+if want macapps && [ "$OS" = "Darwin" ]; then
+  log "brew bundle (Brewfile: casks + mac CLI extras)"
+  brew bundle --file "$DOTS/Brewfile" || warn "brew bundle had failures — check output above"
+  command -v git-lfs >/dev/null 2>&1 && git lfs install
 fi
 
 # --- macos system defaults (harmless to re-run) ---------------
