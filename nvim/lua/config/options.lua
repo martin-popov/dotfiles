@@ -2,6 +2,12 @@
 -- Default options that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/options.lua
 -- Add any additional options here
 
+-- This install's lazyvim.json predates install_version 8, so LazyVim's
+-- legacy fallback silently enables the neo-tree extra as default explorer —
+-- which double-opens alongside our snacks explorer (plugins/explorer.lua)
+-- when nvim is started on a directory. Pin the modern default instead.
+vim.g.lazyvim_explorer = "snacks"
+
 -- Follow the `theme` command's state file (catppuccin maps light -> Latte,
 -- dark -> Mocha); without an explicit value nvim can guess wrong inside tmux
 local theme_file = io.open(vim.fn.expand("~/.local/state/theme"))

@@ -21,8 +21,13 @@ jobs:
       - name: fresh install
         run: bash setup.sh
       - name: tools work
-        run: zsh -ic "nvim --version | head -1; starship -V; fd --version; lazygit --version | head -1; rg --version | head -1; node -v; claude --version"
+        run: zsh -ic "nvim --version | head -1; starship -V; fd --version; lazygit --version | head -1; rg --version | head -1; node -v; claude --version; go version; cargo --version"
       - name: nvim config loads
         run: nvim --headless "+lua assert(vim.g.colors_name == 'catppuccin', 'config did not load')" +qa
       - name: re-run is idempotent
-        run: bash setup.sh
+        run: |
+          cp ~/.bashrc /tmp/bashrc.before
+          cp ~/.zshrc /tmp/zshrc.before
+          bash setup.sh
+          cmp /tmp/bashrc.before ~/.bashrc   # would catch e.g. the duplicated zsh handoff
+          cmp /tmp/zshrc.before ~/.zshrc

@@ -21,16 +21,67 @@ if [ "$(id -u)" -ne 0 ]; then
   fi
 fi
 
+# --- component selection --------------------------------------
+# Interactive checklist (Enter = everything). Non-interactive runs
+# (curl | bash, CI) install everything; preselect with e.g.
+#   COMPONENTS="base go" bash setup.sh
+COMPONENTS_ALL="base node neovim cli starship claude go rust"
+if [ -z "${COMPONENTS:-}" ]; then
+  if [ -t 0 ]; then
+    cat <<'MENU'
+What should this box get?
+  1) base      zsh, tmux, git, curl, ripgrep, fzf, htop, jq + build tools
+  2) node      nvm + node LTS + pnpm
+  3) neovim    latest tarball + LazyVim config from this repo
+  4) cli       fd, lazygit, gh
+  5) starship  prompt
+  6) claude    claude code + plugin settings
+  7) go        latest toolchain -> /usr/local/go
+  8) rust      rustup + stable toolchain
+MENU
+    read -rp "Numbers separated by spaces [Enter = all]: " PICK
+    COMPONENTS=""
+    for n in $PICK; do
+      case "$n" in
+        1) COMPONENTS+=" base" ;;
+        2) COMPONENTS+=" node" ;;
+        3) COMPONENTS+=" neovim" ;;
+        4) COMPONENTS+=" cli" ;;
+        5) COMPONENTS+=" starship" ;;
+        6) COMPONENTS+=" claude" ;;
+        7) COMPONENTS+=" go" ;;
+        8) COMPONENTS+=" rust" ;;
+        *) warn "unknown option: $n" ;;
+      esac
+    done
+    [ -n "$COMPONENTS" ] || COMPONENTS="$COMPONENTS_ALL"
+  else
+    COMPONENTS="$COMPONENTS_ALL"
+  fi
+fi
+want() { case " $COMPONENTS " in *" $1 "*) ;; *) return 1 ;; esac; }
+log "components:$COMPONENTS"
+# Config files (.zshrc, .tmux.conf, nvim/starship links, git identity) are
+# always written — that's the point of a dotfiles repo. Only installs are gated.
+
 # --- system packages -----------------------------------------
 PKGS="zsh tmux git curl unzip ripgrep fzf htop jq"
 if command -v brew >/dev/null 2>&1; then # macOS — no sudo, and brew covers the binary installs below too
-  BREW_PKGS="tmux ripgrep fzf htop jq fd lazygit gh starship neovim" # zsh/git/curl/unzip ship with macOS
-  log "installing packages (brew): $BREW_PKGS"
-  # shellcheck disable=SC2086
-  brew install $BREW_PKGS || warn "some brew installs failed — check output above"
-  brew upgrade neovim 2>/dev/null || true # parity with the linux latest-tarball behavior
-  brew list --cask ghostty >/dev/null 2>&1 || brew install --cask ghostty || warn "ghostty install failed"
-elif [ "$SUDO" != "skip" ]; then
+  BREW_PKGS="" # zsh/git/curl/unzip ship with macOS
+  want base     && BREW_PKGS+=" tmux ripgrep fzf htop jq"
+  want cli      && BREW_PKGS+=" fd lazygit gh"
+  want starship && BREW_PKGS+=" starship"
+  want neovim   && BREW_PKGS+=" neovim"
+  if [ -n "$BREW_PKGS" ]; then
+    log "installing packages (brew):$BREW_PKGS"
+    # shellcheck disable=SC2086
+    brew install $BREW_PKGS || warn "some brew installs failed — check output above"
+  fi
+  want neovim && { brew upgrade neovim 2>/dev/null || true; } # parity with the linux latest-tarball behavior
+  if want base; then
+    brew list --cask ghostty >/dev/null 2>&1 || brew install --cask ghostty || warn "ghostty install failed"
+  fi
+elif want base && [ "$SUDO" != "skip" ]; then
   if command -v apt-get >/dev/null 2>&1; then
     log "installing packages (apt): $PKGS + build-essential"
     $SUDO apt-get update -qq
@@ -52,7 +103,7 @@ GH_AUTH=()
 # --- neovim (latest tarball, updates in place; apt's is old) --
 ARCH="$(uname -m)"
 OS="$(uname -s)"
-if [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ] && [ "$SUDO" != "skip" ]; then
+if want neovim && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ] && [ "$SUDO" != "skip" ]; then
   NVIM_LATEST="$(curl -fsSL "${GH_AUTH[@]}" https://api.github.com/repos/neovim/neovim/releases/latest \
     | sed -nE 's/.*"tag_name": *"(v[^"]+)".*/\1/p' || true)"
   NVIM_HAVE=""
@@ -68,7 +119,7 @@ if [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ] && [ "$SUDO" != "skip" ]; then
   else
     log "neovim up to date: ${NVIM_HAVE:-unknown}"
   fi
-elif ! command -v nvim >/dev/null 2>&1; then
+elif want neovim && ! command -v nvim >/dev/null 2>&1; then
   warn "skipping neovim tarball (arch=$ARCH, sudo=$SUDO) — falling back to package manager version if present"
 fi
 
@@ -77,7 +128,7 @@ gh_latest_tag() { # repo -> tag_name (e.g. v1.2.3)
   curl -fsSL "${GH_AUTH[@]}" "https://api.github.com/repos/$1/releases/latest" \
     | sed -nE 's/.*"tag_name": *"(v?[^"]+)".*/\1/p'
 }
-if ! command -v fd >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
+if want cli && ! command -v fd >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
   FD_V="$(gh_latest_tag sharkdp/fd)" && [ -n "$FD_V" ] && {
     log "installing fd $FD_V"
     curl -fsSL "https://github.com/sharkdp/fd/releases/download/${FD_V}/fd-${FD_V}-x86_64-unknown-linux-gnu.tar.gz" \
@@ -86,14 +137,14 @@ if ! command -v fd >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64
     rm -rf "/tmp/fd-${FD_V}-x86_64-unknown-linux-gnu"
   } || warn "fd install failed"
 fi
-if ! command -v lazygit >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
+if want cli && ! command -v lazygit >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
   LG_V="$(gh_latest_tag jesseduffield/lazygit)" && [ -n "$LG_V" ] && {
     log "installing lazygit $LG_V"
     curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/${LG_V}/lazygit_${LG_V#v}_linux_x86_64.tar.gz" \
       | tar -xz -C "$HOME/.local/bin" lazygit
   } || warn "lazygit install failed"
 fi
-if ! command -v gh >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
+if want cli && ! command -v gh >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
   GH_V="$(gh_latest_tag cli/cli)" && [ -n "$GH_V" ] && {
     log "installing gh $GH_V"
     curl -fsSL "https://github.com/cli/cli/releases/download/${GH_V}/gh_${GH_V#v}_linux_amd64.tar.gz" \
@@ -104,35 +155,65 @@ if ! command -v gh >/dev/null 2>&1 && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64
 fi
 
 # --- starship prompt (~/.local/bin works with or without sudo) --
-command -v starship >/dev/null 2>&1 \
-  || curl -sS https://starship.rs/install.sh | sh -s -- -y -b "$HOME/.local/bin"
+if want starship; then
+  command -v starship >/dev/null 2>&1 \
+    || curl -sS https://starship.rs/install.sh | sh -s -- -y -b "$HOME/.local/bin"
+fi
 
 # --- zsh plugins ---------------------------------------------
-for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
-  [ -d "$HOME/.zsh/$plugin" ] \
-    || git clone --depth 1 "https://github.com/zsh-users/$plugin" "$HOME/.zsh/$plugin"
-done
+if want base; then
+  for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
+    [ -d "$HOME/.zsh/$plugin" ] \
+      || git clone --depth 1 "https://github.com/zsh-users/$plugin" "$HOME/.zsh/$plugin"
+  done
+fi
 
 # --- nvm + node LTS + pnpm -----------------------------------
-export NVM_DIR="$HOME/.nvm"
-if [ ! -s "$NVM_DIR/nvm.sh" ]; then
-  NVM_V="$(gh_latest_tag nvm-sh/nvm)" || true
-  log "installing nvm ${NVM_V:-v0.40.3 (fallback)}"
-  curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_V:-v0.40.3}/install.sh" | bash
-fi
-# shellcheck disable=SC1091
-if [ -s "$NVM_DIR/nvm.sh" ]; then
-  \. "$NVM_DIR/nvm.sh"
-  if ! nvm ls 'lts/*' >/dev/null 2>&1; then
-    log "installing node lts"
-    nvm install --lts
-    nvm alias default 'lts/*'
+if want node; then
+  export NVM_DIR="$HOME/.nvm"
+  if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+    NVM_V="$(gh_latest_tag nvm-sh/nvm)" || true
+    log "installing nvm ${NVM_V:-v0.40.3 (fallback)}"
+    curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_V:-v0.40.3}/install.sh" | bash
   fi
-  command -v corepack >/dev/null 2>&1 && corepack enable pnpm 2>/dev/null || true
+  # shellcheck disable=SC1091
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    \. "$NVM_DIR/nvm.sh"
+    if ! nvm ls 'lts/*' >/dev/null 2>&1; then
+      log "installing node lts"
+      nvm install --lts
+      nvm alias default 'lts/*'
+    fi
+    command -v corepack >/dev/null 2>&1 && corepack enable pnpm 2>/dev/null || true
+  fi
+fi
+
+# --- go (official tarball; apt's lags several releases) --------
+if want go && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ] && [ "$SUDO" != "skip" ]; then
+  GO_LATEST="$(curl -fsSL 'https://go.dev/VERSION?m=text' | head -1 || true)" # e.g. go1.25.4
+  GO_HAVE=""
+  [ -x /usr/local/go/bin/go ] && GO_HAVE="$(/usr/local/go/bin/go version | awk '{print $3}')"
+  if [ -n "$GO_LATEST" ] && [ "$GO_HAVE" != "$GO_LATEST" ]; then
+    log "installing go $GO_LATEST (had: ${GO_HAVE:-none})"
+    curl -fsSL -o /tmp/go.tar.gz "https://go.dev/dl/${GO_LATEST}.linux-amd64.tar.gz"
+    $SUDO rm -rf /usr/local/go
+    $SUDO tar -C /usr/local -xzf /tmp/go.tar.gz
+    rm -f /tmp/go.tar.gz
+  else
+    log "go up to date: ${GO_HAVE:-unknown}"
+  fi
+elif want go; then
+  warn "skipping go (arch=$ARCH, sudo=$SUDO) — install manually from https://go.dev/dl/"
+fi
+
+# --- rust (rustup -> ~/.cargo, no sudo; .zshrc sources cargo env) --
+if want rust && [ ! -x "$HOME/.cargo/bin/cargo" ] && ! command -v cargo >/dev/null 2>&1; then
+  log "installing rust (rustup)"
+  curl -fsSL https://sh.rustup.rs | sh -s -- -y --no-modify-path || warn "rust install failed"
 fi
 
 # --- claude code ---------------------------------------------
-if ! command -v claude >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/claude" ]; then
+if want claude && ! command -v claude >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/claude" ]; then
   log "installing claude code"
   curl -fsSL https://claude.ai/install.sh | bash || warn "claude code install failed (fine on locked-down boxes)"
 fi
@@ -159,6 +240,7 @@ fi
 # --- claude code settings (plugins, vim mode, theme) ---------
 # Claude Code reconciles enabledPlugins/extraKnownMarketplaces on startup,
 # so listing them here is enough — plugins auto-install on first run.
+if want claude; then
 mkdir -p "$HOME/.claude"
 CLAUDE_SETTINGS_NEW="$(mktemp)"
 cat > "$CLAUDE_SETTINGS_NEW" <<'EOF'
@@ -205,12 +287,14 @@ fi
 log "writing ~/.config/ponytail/config.json (defaultMode: off)"
 mkdir -p "$HOME/.config/ponytail"
 printf '{\n  "defaultMode": "off"\n}\n' > "$HOME/.config/ponytail/config.json"
+fi # want claude
 
 # --- ~/.tmux.conf --------------------------------------------
 log "writing ~/.tmux.conf"
 cat > "$HOME/.tmux.conf" <<'EOF'
 set -g mouse on
 setw -g mode-keys vi
+set -g focus-events on
 
 # true color (RGB) passthrough — without this 24-bit colors get
 # quantized to the 256-color palette (Latte #EFF1F5 -> #EEEEEE)
@@ -283,6 +367,10 @@ alias lsa='ls -lah'
 
 export PATH="$HOME/.local/bin:$PATH"
 
+# Toolchains from setup.sh — no-ops on boxes that skipped them
+[ -d /usr/local/go/bin ] && export PATH="$PATH:/usr/local/go/bin:$HOME/go/bin"
+[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+
 # Reuse one ssh-agent across shells (keys are passphrase-protected;
 # AddKeysToAgent in ~/.ssh/config caches them on first use).
 # macOS already runs a launchd agent with keychain integration — keep it.
@@ -309,11 +397,13 @@ EOF
 # --- default shell -> zsh ------------------------------------
 ZSH_PATH="$(command -v zsh || true)"
 if [ -n "$ZSH_PATH" ] && [ "${SHELL:-}" != "$ZSH_PATH" ]; then
-  if chsh -s "$ZSH_PATH" 2>/dev/null; then
+  # chsh may password-prompt; allow it only on a tty (CI / curl|bash would
+  # hang or eat piped input) — everyone else gets the bashrc handoff below
+  if [ -t 0 ] && chsh -s "$ZSH_PATH"; then
     log "default shell changed to zsh (takes effect on next login)"
   else
     warn "couldn't chsh (no password / restricted box) — adding zsh handoff to ~/.bashrc"
-    if ! grep -q 'exec zsh' "$HOME/.bashrc" 2>/dev/null; then
+    if ! grep -q 'hand off interactive sessions to zsh' "$HOME/.bashrc" 2>/dev/null; then
       printf '\n# hand off interactive sessions to zsh\nif [ -t 1 ] && [ -x %s ] && [ -z "${ZSH_VERSION:-}" ]; then exec %s -l; fi\n' \
         "$ZSH_PATH" "$ZSH_PATH" >> "$HOME/.bashrc"
     fi

@@ -16,18 +16,43 @@ Or without hosting, straight over ssh:
 ssh user@box 'bash -s' < setup.sh
 ```
 
-Idempotent — re-run any time to update (pulls latest neovim, keeps configs in sync).
+Idempotent — re-run any time to update (pulls latest neovim/go, keeps configs in sync).
 
-## What it sets up
+Run from a terminal, it asks which components to install (Enter = everything).
+Non-interactive runs (`curl | bash`, CI, ssh heredoc) install everything;
+preselect instead with e.g.:
 
-- **zsh** as default shell — vi mode, shared history, autosuggestions, syntax highlighting
-- **starship** prompt (minimal single-line: dir + git + prompt char)
-- **fzf** (fuzzy Ctrl-R / Ctrl-T), **ripgrep**, **htop**, **tmux**
+```bash
+COMPONENTS="base go" bash setup.sh
+```
+
+## Components
+
+- **base** — zsh (default shell; vi mode, shared history, autosuggestions, syntax highlighting), tmux, git, **fzf** (fuzzy Ctrl-R / Ctrl-T), **ripgrep**, **htop**, jq, build tools
+- **node** — nvm + Node LTS + pnpm (corepack)
 - **neovim** — latest release tarball into `/opt`, updated on re-run; config is the repo's `nvim/` (LazyVim + catppuccin, explorer right, BG phonetic langmap, lang extras), symlinked to `~/.config/nvim` with plugins pinned via `lazy-lock.json`
-- **nvm** + Node LTS + pnpm (corepack)
-- **Claude Code** + settings: vim editor mode, plugins (superpowers, context7, playwright, github, frontend-design, TS/Go/Rust LSPs, ponytail) — auto-installed by Claude Code on first run; merges into an existing settings.json without clobbering it
-- git identity (only if unset)
+- **cli** — fd, lazygit, gh (release binaries into `~/.local/bin`)
+- **starship** prompt (minimal single-line: dir + git + prompt char)
+- **claude** — Claude Code + settings: vim editor mode, plugins (superpowers, context7, playwright, github, frontend-design, TS/Go/Rust LSPs, ponytail) — auto-installed by Claude Code on first run; merges into an existing settings.json without clobbering it
+- **go** — latest official tarball into `/usr/local/go`, updated on re-run
+- **rust** — rustup + stable toolchain into `~/.cargo`
+
+Config files (`.zshrc`, `.tmux.conf`, nvim/starship links, git identity if unset)
+are always written regardless of selection.
 
 Degrades gracefully without root/sudo: system packages are skipped, starship goes to `~/.local/bin`, and if `chsh` is blocked it adds a bash→zsh handoff instead.
 
 Existing `~/.zshrc` is backed up to `~/.zshrc.pre-setup` on first run. Machine-specific PATHs/aliases go in `~/.zshrc.local` (sourced if present, never touched by setup).
+
+## Testing
+
+Throwaway Ubuntu box with real ssh (fresh box each `docker rm -f` + re-run):
+
+```bash
+docker build -t setup-test -f test-box.Dockerfile .
+docker run -d --name setup-test -p 2222:22 -v "$PWD":/home/dev/dotfiles:ro setup-test
+ssh dev@localhost -p 2222   # password: dev, passwordless sudo
+```
+
+CI (`.github/workflows/test.yml`) runs a fresh install + idempotent re-run on
+Ubuntu and Debian containers weekly and on push.
