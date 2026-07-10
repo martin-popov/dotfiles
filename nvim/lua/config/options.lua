@@ -8,6 +8,18 @@
 -- when nvim is started on a directory. Pin the modern default instead.
 vim.g.lazyvim_explorer = "snacks"
 
+-- Indent with real tabs, rendered 4 wide. shiftwidth must match tabstop or
+-- indent guides (snacks indent) draw multiple lines per level.
+vim.opt.expandtab = false
+vim.opt.tabstop = 4
+vim.opt.shiftwidth = 4
+
+-- Soft wrap (LazyVim disables it): break at word boundaries, keep the
+-- wrapped remainder aligned with the line's indent.
+vim.opt.wrap = true
+vim.opt.linebreak = true
+vim.opt.breakindent = true
+
 -- Follow the `theme` command's state file (catppuccin maps light -> Latte,
 -- dark -> Mocha); without an explicit value nvim can guess wrong inside tmux
 local theme_file = io.open(vim.fn.expand("~/.local/state/theme"))
