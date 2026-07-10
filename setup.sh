@@ -190,7 +190,23 @@ if want node; then
       nvm install --lts
       nvm alias default 'lts/*'
     fi
-    command -v corepack >/dev/null 2>&1 && corepack enable pnpm 2>/dev/null || true
+    if command -v corepack >/dev/null 2>&1; then
+      corepack enable pnpm 2>/dev/null || true
+      # corepack's default pnpm is the stale "last known good" bundled with
+      # node; pin latest so fresh machines don't start on an old release.
+      # Repos with a packageManager field still get their pinned version.
+      corepack install -g pnpm@latest 2>/dev/null || true
+    fi
+    # fontawesome: repos route the @fortawesome scope in their .npmrc; the
+    # auth token belongs in ~/.npmrc so pnpm/npm find it without any .env.
+    if ! grep -qs 'npm\.fontawesome\.com/:_authToken' "$HOME/.npmrc"; then
+      if [ -n "${FONTAWESOME_NPM_AUTH_TOKEN:-}" ]; then
+        printf '//npm.fontawesome.com/:_authToken=%s\n' "$FONTAWESOME_NPM_AUTH_TOKEN" >> "$HOME/.npmrc"
+        log "wrote fontawesome token to ~/.npmrc"
+      else
+        log "fontawesome token missing: FONTAWESOME_NPM_AUTH_TOKEN=<token> ./setup.sh node (or add it to ~/.npmrc yourself)"
+      fi
+    fi
   fi
 fi
 
