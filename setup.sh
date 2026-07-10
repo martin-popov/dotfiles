@@ -413,6 +413,41 @@ fi
 ln -sf "$DOTS/theme" "$HOME/.local/bin/theme"
 [ -f "$HOME/.local/state/theme" ] || "$DOTS/theme" light
 
+# --- theme-sync LaunchAgent (macOS): follow appearance changes --
+# Fires `theme sync` whenever global prefs change (appearance toggles in
+# System Settings, scheduled light/dark, or the theme script's own push);
+# sync exits immediately unless the appearance drifted from the state file.
+if [ "$OS" = "Darwin" ]; then
+  log "installing theme-sync LaunchAgent"
+  mkdir -p "$HOME/Library/LaunchAgents"
+  THEME_PLIST="$HOME/Library/LaunchAgents/com.martinpopov.theme-sync.plist"
+  cat > "$THEME_PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.martinpopov.theme-sync</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$HOME/.local/bin/theme</string>
+    <string>sync</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>WatchPaths</key>
+  <array><string>$HOME/Library/Preferences/.GlobalPreferences.plist</string></array>
+  <key>RunAtLoad</key><true/>
+</dict>
+</plist>
+EOF
+  launchctl bootout "gui/$(id -u)/com.martinpopov.theme-sync" 2>/dev/null || true
+  launchctl bootstrap "gui/$(id -u)" "$THEME_PLIST" 2>/dev/null \
+    || warn "launchctl bootstrap failed — theme-sync loads on next login"
+fi
+
 # --- ~/.zshrc ------------------------------------------------
 if [ -f "$HOME/.zshrc" ] && [ ! -f "$HOME/.zshrc.pre-setup" ]; then
   cp "$HOME/.zshrc" "$HOME/.zshrc.pre-setup"

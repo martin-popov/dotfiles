@@ -20,11 +20,18 @@ vim.opt.wrap = true
 vim.opt.linebreak = true
 vim.opt.breakindent = true
 
--- Follow the `theme` command's state file (catppuccin maps light -> Latte,
--- dark -> Mocha); without an explicit value nvim can guess wrong inside tmux
-local theme_file = io.open(vim.fn.expand("~/.local/state/theme"))
-local mode = theme_file and theme_file:read("*l") or "light"
-if theme_file then theme_file:close() end
+-- Theme (catppuccin maps light -> Latte, dark -> Mocha): on macOS pull the
+-- live system appearance so nvim can never drift from it; elsewhere follow
+-- the `theme` command's state file. Without an explicit value nvim can
+-- guess wrong inside tmux.
+local mode
+if vim.fn.has("mac") == 1 then
+  mode = vim.fn.system("defaults read -g AppleInterfaceStyle 2>/dev/null"):find("Dark") and "dark" or "light"
+else
+  local theme_file = io.open(vim.fn.expand("~/.local/state/theme"))
+  mode = theme_file and theme_file:read("*l") or "light"
+  if theme_file then theme_file:close() end
+end
 vim.o.background = mode == "dark" and "dark" or "light"
 
 -- Cyrillic (Bulgarian Phonetic) → command-key langmap for normal/visual/operator

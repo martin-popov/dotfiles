@@ -1,12 +1,31 @@
 #!/usr/bin/env bash
-# theme light|dark — switch Catppuccin flavour everywhere:
+# theme light|dark|sync — switch Catppuccin flavour everywhere:
 # Windows Terminal scheme, tmux bar/borders, running + future nvim instances.
-# State lives in ~/.local/state/theme (read by tmux.conf and nvim options.lua).
+# State lives in ~/.local/state/theme (read by tmux.conf; nvim pulls the
+# macOS appearance directly and falls back to this file elsewhere).
+# `theme sync` converges onto the current macOS appearance — the
+# com.martinpopov.theme-sync LaunchAgent (installed by setup.sh) runs it on
+# every appearance change, so System Settings / schedules propagate too.
 set -euo pipefail
 
 mode="${1:-}"
+push_appearance=1
+if [ "$mode" = sync ]; then
+  [ "$(uname)" = Darwin ] || { echo "theme sync is macOS-only" >&2; exit 1; }
+  if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = Dark ]; then
+    mode=dark
+  else
+    mode=light
+  fi
+  if [ "$(cat "$HOME/.local/state/theme" 2>/dev/null)" = "$mode" ]; then
+    exit 0 # already converged — don't churn tmux/nvim or re-fire the agent
+  fi
+  # the system IS the source in sync mode; skipping the push also avoids
+  # osascript TCC prompts under launchd
+  push_appearance=0
+fi
 if [ "$mode" != light ] && [ "$mode" != dark ]; then
-  echo "usage: theme light|dark" >&2
+  echo "usage: theme light|dark|sync" >&2
   exit 1
 fi
 
@@ -36,15 +55,21 @@ fi
 tmux source-file "$HOME/.config/tmux/theme.conf" 2>/dev/null || true
 
 # --- nvim: flip background on every running instance (catppuccin maps
-# light->latte, dark->mocha); new instances read the state file
-for sock in "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/nvim.*.0 "${TMPDIR:-/tmp}"/nvim."${USER:-$(id -un)}"/*/nvim.*.0; do
+# light->latte, dark->mocha); new instances pull the system appearance /
+# state file themselves. Under launchd TMPDIR is unset but nvim sockets
+# live in the per-user temp dir — recover it via getconf.
+ntmp="${TMPDIR:-/tmp}"
+if [ "$(uname)" = Darwin ] && [ -z "${TMPDIR:-}" ]; then
+  ntmp="$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || echo /tmp)"
+fi
+for sock in "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/nvim.*.0 "$ntmp"/nvim."${USER:-$(id -un)}"/*/nvim.*.0; do
   [ -S "$sock" ] || continue
   nvim --server "$sock" --remote-expr "execute('set background=$mode')" >/dev/null 2>&1 || true
 done
 
 # --- macOS: flip system appearance — Ghostty (light:/dark: theme) and
 # Claude Code (theme=auto) follow it live
-if [ "$(uname)" = Darwin ]; then
+if [ "$(uname)" = Darwin ] && [ "$push_appearance" = 1 ]; then
   osascript -e "tell application \"System Events\" to tell appearance preferences to set dark mode to $([ "$mode" = dark ] && echo true || echo false)" >/dev/null 2>&1 || true
 fi
 
