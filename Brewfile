@@ -1,6 +1,9 @@
 # macOS apps + mac-only CLI extras (the `macapps` component).
 # CLI basics (git, gh, ripgrep, fzf, neovim, lazygit, starship, go…) are
 # handled by their own setup.sh components — don't duplicate them here.
+# adopt: take ownership of identical apps already in /Applications instead
+# of failing (machines that predate this Brewfile)
+cask_args adopt: true
 brew "git-lfs"
 brew "tree"
 brew "sql-formatter"
