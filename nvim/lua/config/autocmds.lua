@@ -13,7 +13,7 @@
 -- word motions; runs on FileType, after the runtime ftplugin has set it.
 vim.api.nvim_create_autocmd("FileType", {
   group = vim.api.nvim_create_augroup("kebab_word_motions", { clear = true }),
-  pattern = { "css", "scss", "sass" },
+  pattern = { "css", "scss", "sass", "less" },
   callback = function()
     vim.opt_local.iskeyword:remove("-")
   end,
