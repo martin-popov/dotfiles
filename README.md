@@ -48,6 +48,39 @@ Degrades gracefully without root/sudo: system packages are skipped, starship goe
 
 Existing `~/.zshrc` is backed up to `~/.zshrc.pre-setup` on first run. Machine-specific PATHs/aliases go in `~/.zshrc.local` (sourced if present, never touched by setup).
 
+## Windows key remaps
+
+`windows/` replaces PowerToys Keyboard Manager — same six remaps, but they
+don't drop out. Clone this repo on the Windows side (the logon task needs a
+local NTFS path; a `\\wsl.localhost\…` path isn't there yet when the task
+fires), then from an **elevated** PowerShell:
+
+```powershell
+git clone https://github.com/martin-popov/dotfiles $env:USERPROFILE\dotfiles
+& $env:USERPROFILE\dotfiles\windows\setup.ps1
+```
+
+| Key | Sends | Where |
+| --- | --- | --- |
+| Caps Lock | Esc | registry |
+| F3 | Win+Tab (Task View) | `keys.ahk` |
+| LCtrl+←/→ | Win+Ctrl+←/→ (virtual desktop) | `keys.ahk` |
+| LCtrl+Q | Alt+F4 | `keys.ahk` |
+| Ctrl+Tab | Alt+Tab (hold Ctrl to keep cycling) | `keys.ahk` |
+
+Caps Lock → Esc is a `Scancode Map` value under
+`HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout`: the keyboard driver
+does it, so there's no process to crash and it works at the login screen.
+Needs one reboot.
+
+The rest is `keys.ahk` (AutoHotkey v2), registered as a **logon scheduled task
+at highest privileges**. That's the actual fix for PowerToys dropping out — an
+unelevated keyboard hook is ignored while an admin window has focus.
+
+Turn PowerToys Keyboard Manager **off** afterwards or the two will fight.
+Re-run `setup.ps1` after editing `keys.ahk` (it validates the syntax, restarts
+the task, and re-verifies the registry value). Idempotent.
+
 ## Testing
 
 Throwaway Ubuntu box with real ssh (fresh box each `docker rm -f` + re-run):
