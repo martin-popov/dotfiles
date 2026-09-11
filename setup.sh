@@ -114,7 +114,7 @@ GH_AUTH=()
 ARCH="$(uname -m)"
 OS="$(uname -s)"
 if want neovim && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ] && [ "$SUDO" != "skip" ]; then
-  NVIM_LATEST="$(curl -fsSL "${GH_AUTH[@]}" https://api.github.com/repos/neovim/neovim/releases/latest \
+  NVIM_LATEST="$(curl -fsSL ${GH_AUTH[@]+"${GH_AUTH[@]}"} https://api.github.com/repos/neovim/neovim/releases/latest \
     | sed -nE 's/.*"tag_name": *"(v[^"]+)".*/\1/p' || true)"
   NVIM_HAVE=""
   command -v nvim >/dev/null 2>&1 && NVIM_HAVE="v$(nvim --version | head -1 | sed 's/^NVIM v//')"
@@ -135,7 +135,7 @@ fi
 
 # --- fd + lazygit + gh (binaries -> ~/.local/bin, no sudo needed) --
 gh_latest_tag() { # repo -> tag_name (e.g. v1.2.3)
-  curl -fsSL "${GH_AUTH[@]}" "https://api.github.com/repos/$1/releases/latest" \
+  curl -fsSL ${GH_AUTH[@]+"${GH_AUTH[@]}"} "https://api.github.com/repos/$1/releases/latest" \
     | sed -nE 's/.*"tag_name": *"(v?[^"]+)".*/\1/p'
 }
 fetch_bin() { # <name> <repo> <asset printf pattern> <full|strip — version form in asset>
@@ -266,7 +266,7 @@ if want claude; then
 mkdir -p "$HOME/.claude"
 CLAUDE_SETTINGS="$(cat <<'EOF'
 {
-  "model": "claude-fable-5[1m]",
+  "model": "claude-fable-5-1[1m]",
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
@@ -288,7 +288,9 @@ CLAUDE_SETTINGS="$(cat <<'EOF'
     }
   },
   "theme": "auto",
+  "tui": "default",
   "editorMode": "vim",
+  "remoteControlAtStartup": false,
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
   "agentPushNotifEnabled": true
