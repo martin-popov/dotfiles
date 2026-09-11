@@ -89,7 +89,7 @@ if command -v brew >/dev/null 2>&1; then # macOS — no sudo, and brew covers th
   fi
   want neovim && { brew upgrade neovim 2>/dev/null || true; } # parity with the linux latest-tarball behavior
   if want base; then
-    brew list --cask ghostty >/dev/null 2>&1 || brew install --cask ghostty || warn "ghostty install failed"
+    brew list --cask ghostty >/dev/null 2>&1 || brew install --cask --adopt ghostty || warn "ghostty install failed"
   fi
 elif want base && [ "$SUDO" != "skip" ]; then
   if command -v apt-get >/dev/null 2>&1; then
