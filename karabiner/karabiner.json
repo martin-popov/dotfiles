@@ -1,5 +1,7 @@
 {
-    "global": { "show_in_menu_bar": false },
+    "global": {
+        "show_in_menu_bar": false
+    },
     "profiles": [
         {
             "devices": [
@@ -13,8 +15,14 @@
                     "ignore": false,
                     "simple_modifications": [
                         {
-                            "from": { "key_code": "caps_lock" },
-                            "to": [{ "key_code": "escape" }]
+                            "from": {
+                                "key_code": "caps_lock"
+                            },
+                            "to": [
+                                {
+                                    "key_code": "escape"
+                                }
+                            ]
                         }
                     ]
                 },
@@ -53,8 +61,14 @@
                     },
                     "simple_modifications": [
                         {
-                            "from": { "key_code": "escape" },
-                            "to": [{ "key_code": "grave_accent_and_tilde" }]
+                            "from": {
+                                "key_code": "escape"
+                            },
+                            "to": [
+                                {
+                                    "key_code": "grave_accent_and_tilde"
+                                }
+                            ]
                         }
                     ]
                 },
@@ -84,8 +98,14 @@
                     },
                     "simple_modifications": [
                         {
-                            "from": { "key_code": "page_up" },
-                            "to": [{ "key_code": "left_shift" }]
+                            "from": {
+                                "key_code": "page_up"
+                            },
+                            "to": [
+                                {
+                                    "key_code": "left_shift"
+                                }
+                            ]
                         }
                     ]
                 }
@@ -94,15 +114,104 @@
             "selected": true,
             "simple_modifications": [
                 {
-                    "from": { "key_code": "caps_lock" },
-                    "to": [{ "key_code": "escape" }]
+                    "from": {
+                        "key_code": "caps_lock"
+                    },
+                    "to": [
+                        {
+                            "key_code": "escape"
+                        }
+                    ]
                 },
                 {
-                    "from": { "key_code": "right_command" },
-                    "to": [{ "key_code": "delete_or_backspace" }]
+                    "from": {
+                        "key_code": "right_command"
+                    },
+                    "to": [
+                        {
+                            "key_code": "delete_or_backspace"
+                        }
+                    ]
                 }
             ],
-            "virtual_hid_keyboard": { "keyboard_type_v2": "ansi" }
+            "virtual_hid_keyboard": {
+                "keyboard_type_v2": "ansi"
+            },
+            "complex_modifications": {
+                "rules": [
+                    {
+                        "description": "TEMP-DISABLE-IQUNIX (remove to re-enable keyboard)",
+                        "manipulators": [
+                            {
+                                "type": "basic",
+                                "from": {
+                                    "any": "key_code",
+                                    "modifiers": {
+                                        "optional": [
+                                            "any"
+                                        ]
+                                    }
+                                },
+                                "conditions": [
+                                    {
+                                        "type": "device_if",
+                                        "identifiers": [
+                                            {
+                                                "vendor_id": 1452,
+                                                "product_id": 591
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "basic",
+                                "from": {
+                                    "any": "consumer_key_code",
+                                    "modifiers": {
+                                        "optional": [
+                                            "any"
+                                        ]
+                                    }
+                                },
+                                "conditions": [
+                                    {
+                                        "type": "device_if",
+                                        "identifiers": [
+                                            {
+                                                "vendor_id": 1452,
+                                                "product_id": 591
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "basic",
+                                "from": {
+                                    "any": "pointing_button",
+                                    "modifiers": {
+                                        "optional": [
+                                            "any"
+                                        ]
+                                    }
+                                },
+                                "conditions": [
+                                    {
+                                        "type": "device_if",
+                                        "identifiers": [
+                                            {
+                                                "vendor_id": 1452,
+                                                "product_id": 591
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
         }
     ]
 }
