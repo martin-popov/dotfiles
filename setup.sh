@@ -284,6 +284,12 @@ ln -sfn "$DOTS/nvim" "$HOME/.config/nvim"
 if command -v nvim >/dev/null 2>&1; then
   log "restoring nvim plugins from lazy-lock.json"
   nvim --headless "+Lazy! restore" +qa >/dev/null 2>&1 || warn "plugin restore had errors — run :Lazy restore inside nvim"
+  # a first install clones at HEAD and rewrites the lock; a second pass
+  # against the committed pins checks out the pinned commits
+  if ! git -C "$DOTS" diff --quiet -- nvim/lazy-lock.json 2>/dev/null; then
+    git -C "$DOTS" checkout -- nvim/lazy-lock.json
+    nvim --headless "+Lazy! restore" +qa >/dev/null 2>&1 || true
+  fi
 fi
 
 # --- claude code settings (model, effort, vim mode, theme) ----
@@ -413,6 +419,8 @@ if want macos && [ "$OS" = "Darwin" ]; then
   defaults write NSGlobalDomain KeyRepeat -int 2
   defaults write NSGlobalDomain InitialKeyRepeat -int 15
   defaults write NSGlobalDomain AppleKeyboardUIMode -int 2
+  # sound: feedback click when changing volume
+  defaults write NSGlobalDomain com.apple.sound.beep.feedback -int 1
   # dock: autohide instantly, big tiles + magnification, no recents,
   # keep Spaces order, minimize into app icon, no bottom-right hot corner
   defaults write com.apple.dock autohide -bool true
@@ -437,6 +445,7 @@ if want macos && [ "$OS" = "Darwin" ]; then
     warn "dockutil not installed — skipping Dock contents"
   fi
   killall Dock Finder 2>/dev/null || true
+  log "keyboard/sound defaults apply after logging out and back in"
 fi
 
 # --- theme switcher (catppuccin light/dark everywhere) --------
