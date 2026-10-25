@@ -52,7 +52,7 @@ untracked `~/.ssh/config.local`.
 
 Git defaults: `main` as the default branch, rebase on pull (with autostash),
 first push sets the upstream, global ignore for `.DS_Store`. Once
-`~/.ssh/martin-popoff.pub` exists, commits and tags are signed with it.
+`~/.ssh/martin-popov.pub` exists, commits and tags are signed with it.
 
 Release cooldown: GitHub release downloads (neovim, fd, lazygit, gh, nvm, pnpm) take the newest release that's at least 7 days old, and npm/pnpm get the same window (`RELEASE_AGE_DAYS` in `setup.sh`). Homebrew, go and the rustup/starship/claude installers still install their latest.
 
@@ -67,11 +67,14 @@ What the script can't do on its own, roughly in order:
 1. **ssh key** — copy the GitHub key into `~/.ssh/` (`chmod 600`), add a
    `Host github.com` entry with its `IdentityFile` to `~/.ssh/config.local`,
    check with `ssh -T git@github.com`, then re-run `setup.sh` so commit
-   signing picks it up.
+   signing picks it up. Give it a passphrase (`ssh-keygen -p -f
+   ~/.ssh/martin-popov`) and store that in the Keychain once with
+   `ssh-add --apple-use-keychain ~/.ssh/martin-popov`; new shells load it
+   into the agent, so neither ssh nor signing asks again.
 2. **GitHub CLI** — `gh auth login` (GitHub.com → SSH → the existing key).
 3. **Verified commits** — register the same key for signing:
    `gh auth refresh -s admin:ssh_signing_key`, then
-   `gh ssh-key add ~/.ssh/martin-popoff.pub --type signing`.
+   `gh ssh-key add ~/.ssh/martin-popov.pub --type signing`.
 4. **Font Awesome** — `FONTAWESOME_NPM_AUTH_TOKEN=<token> bash setup.sh node`.
 5. **Log out and back in** — key repeat and sound defaults only apply then.
 6. **App permissions** — open Karabiner-Elements and Raycast once and grant

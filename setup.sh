@@ -443,7 +443,7 @@ grep -qsx '.DS_Store' "$HOME/.config/git/ignore" || echo '.DS_Store' >> "$HOME/.
 # (copied per machine, never in the repo). GitHub shows them Verified once
 # the same key is added there as a signing key; allowed_signers lets
 # `git log --show-signature` verify locally too.
-SIGNING_KEY="$HOME/.ssh/martin-popoff.pub"
+SIGNING_KEY="$HOME/.ssh/martin-popov.pub"
 if [ -f "$SIGNING_KEY" ]; then
   git_default gpg.format ssh
   git_default user.signingkey "$SIGNING_KEY"
@@ -643,8 +643,12 @@ alias pnpx='pnpm dlx'
 
 # Reuse one ssh-agent across shells (keys are passphrase-protected;
 # AddKeysToAgent in ~/.ssh/config caches them on first use).
-# macOS already runs a launchd agent with keychain integration — keep it.
-if [ "$(uname)" != "Darwin" ] && [ -d "$HOME/.ssh" ]; then
+# macOS already runs a launchd agent with keychain integration — keep it,
+# and load the keys whose passphrases are in the Keychain so git commit
+# signing (which needs the agent for a passphrased key) never prompts.
+if [ "$(uname)" = "Darwin" ]; then
+  ssh-add --apple-load-keychain -q 2>/dev/null
+elif [ -d "$HOME/.ssh" ]; then
   export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
   ssh-add -l >/dev/null 2>&1
   if [ $? -eq 2 ]; then
