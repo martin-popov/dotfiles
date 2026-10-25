@@ -387,9 +387,13 @@ fi
 mkdir -p "$HOME/.config/zed"
 ln -sf "$DOTS/zed/settings.json" "$HOME/.config/zed/settings.json"
 ln -sf "$DOTS/zed/keymap.json" "$HOME/.config/zed/keymap.json"
+# whole dir: karabiner replaces a symlinked file on save, a dir link survives
 if [ "$OS" = "Darwin" ]; then
-  mkdir -p "$HOME/.config/karabiner"
-  ln -sf "$DOTS/karabiner/karabiner.json" "$HOME/.config/karabiner/karabiner.json"
+  if [ -e "$HOME/.config/karabiner" ] && [ ! -L "$HOME/.config/karabiner" ]; then
+    mv "$HOME/.config/karabiner" "$HOME/.config/karabiner.pre-setup"
+    log "backed up existing ~/.config/karabiner -> ~/.config/karabiner.pre-setup"
+  fi
+  ln -sfn "$DOTS/karabiner" "$HOME/.config/karabiner"
 fi
 
 # --- macos apps (brew bundle) ----------------------------------
