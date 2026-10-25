@@ -226,18 +226,11 @@ if want node; then
       nvm install --lts
       nvm alias default 'lts/*'
     fi
-    if command -v corepack >/dev/null 2>&1; then
-      corepack enable pnpm 2>/dev/null || true
-      # corepack's default pnpm is the stale "last known good" bundled with
-      # node; pin latest so fresh machines don't start on an old release.
-      # Repos with a packageManager field still get their pinned version.
-      corepack install -g pnpm@latest 2>/dev/null || true
-      # same week-long cooldown for packages (minutes; pnpm's own default is
-      # a day). Explicitly set, pnpm also blocks younger versions outright.
-      COREPACK_ENABLE_DOWNLOAD_PROMPT=0 pnpm config set --global minimumReleaseAge $((RELEASE_AGE_DAYS * 24 * 60)) >/dev/null 2>&1 \
-        || warn "couldn't set pnpm minimumReleaseAge"
-    fi
-    npm config set min-release-age "$RELEASE_AGE_DAYS" 2>/dev/null || warn "couldn't set npm min-release-age" # days
+    # pnpm is standalone now (below); drop corepack's shims so they can't win
+    command -v corepack >/dev/null 2>&1 && { corepack disable pnpm 2>/dev/null || true; }
+    # npm stays only for tools that shell out to it (nvm, Mason) — the .zshrc
+    # blocks typing it — so it gets the same cooldown in days
+    npm config set min-release-age "$RELEASE_AGE_DAYS" 2>/dev/null || warn "couldn't set npm min-release-age"
     # fontawesome: repos route the @fortawesome scope in their .npmrc; the
     # auth token belongs in ~/.npmrc so pnpm/npm find it without any .env.
     if ! grep -qs 'npm\.fontawesome\.com/:_authToken' "$HOME/.npmrc"; then
@@ -249,6 +242,32 @@ if want node; then
       fi
     fi
   fi
+fi
+
+# --- pnpm (standalone binary, no node or corepack needed) ------
+# Node 25+ no longer ships corepack, so pnpm comes from its own release
+# tarball (binary + dist/, kept together) and updates in place on re-run.
+if want node; then
+  case "$OS-$ARCH" in
+    Darwin-arm64) PNPM_ASSET=darwin-arm64 ;; Darwin-x86_64) PNPM_ASSET=darwin-x64 ;;
+    Linux-x86_64) PNPM_ASSET=linux-x64 ;;    Linux-aarch64)  PNPM_ASSET=linux-arm64 ;;
+    *) PNPM_ASSET="" ;;
+  esac
+  PNPM_TAG="$(gh_latest_tag pnpm/pnpm)" || true
+  PNPM_HAVE="$("$HOME/.local/share/pnpm-dist/pnpm" --version 2>/dev/null || true)"
+  if [ -z "$PNPM_ASSET" ] || [ -z "$PNPM_TAG" ]; then
+    warn "skipping pnpm (arch=$ARCH, tag=${PNPM_TAG:-none})"
+  elif [ "v$PNPM_HAVE" != "$PNPM_TAG" ]; then
+    log "installing pnpm $PNPM_TAG (had: ${PNPM_HAVE:-none})"
+    rm -rf "$HOME/.local/share/pnpm-dist" && mkdir -p "$HOME/.local/share/pnpm-dist"
+    curl -fsSL "https://github.com/pnpm/pnpm/releases/download/$PNPM_TAG/pnpm-$PNPM_ASSET.tar.gz" \
+      | tar -xz -C "$HOME/.local/share/pnpm-dist" || warn "pnpm install failed"
+  fi
+  [ -x "$HOME/.local/share/pnpm-dist/pnpm" ] && ln -sf "$HOME/.local/share/pnpm-dist/pnpm" "$HOME/.local/bin/pnpm"
+  # week-long cooldown for packages (minutes; pnpm's own default is a day).
+  # Explicitly set, pnpm also blocks younger versions outright.
+  "$HOME/.local/bin/pnpm" config set --global minimumReleaseAge $((RELEASE_AGE_DAYS * 24 * 60)) >/dev/null 2>&1 \
+    || warn "couldn't set pnpm minimumReleaseAge"
 fi
 
 # --- go (official tarball; apt's lags several releases) --------
@@ -562,6 +581,15 @@ alias la='ls -lAh'
 alias lsa='ls -lah'
 
 export PATH="$HOME/.local/bin:$PATH"
+
+# pnpm only. Global installs (pnpm add -g) land in PNPM_HOME. npm/npx stay
+# installed for tools that call them (nvm, Mason) but typing them is
+# blocked; `command npm …` gets through when something really needs it.
+export PNPM_HOME="$HOME/.local/share/pnpm"
+export PATH="$PNPM_HOME:$PATH"
+npm() { print -u2 "npm is off here — use pnpm (escape hatch: command npm $*)"; return 1; }
+npx() { print -u2 "npx is off here — use pnpm dlx (escape hatch: command npx $*)"; return 1; }
+alias pnpx='pnpm dlx'
 
 # Start in ~/Developer. Ghostty sets this itself; this covers Terminal.app,
 # ssh, tmux. Only from $HOME, so editor terminals keep their project dir.

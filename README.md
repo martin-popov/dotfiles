@@ -34,7 +34,7 @@ bash setup.sh base go        # or: COMPONENTS="base go" bash setup.sh
 ## Components
 
 - **base** — zsh (default shell; vi mode, shared history, autosuggestions, syntax highlighting), tmux, git, **fzf** (fuzzy Ctrl-R / Ctrl-T), **ripgrep**, **htop**, jq, build tools
-- **node** — nvm + Node LTS + pnpm (corepack); npm and pnpm only install package versions at least 7 days old
+- **node** — nvm + Node LTS + standalone pnpm (no corepack — Node 25+ dropped it). pnpm only: typing `npm`/`npx` in zsh is blocked (`command npm` bypasses), npm stays installed for nvm and Mason. Both only install package versions at least 7 days old
 - **neovim** — newest release tarball at least 7 days old into `/opt`, updated on re-run; config is the repo's `nvim/` (LazyVim + catppuccin, explorer right, BG phonetic langmap, lang extras), symlinked to `~/.config/nvim` with plugins pinned via `lazy-lock.json`
 - **cli** — fd, lazygit, gh (release binaries into `~/.local/bin`)
 - **starship** prompt (minimal single-line: dir + git + prompt char)
@@ -50,7 +50,7 @@ are always written regardless of selection. `~/Developer` is created too, and
 new Ghostty windows and zsh shells start there. Private ssh hosts belong in the
 untracked `~/.ssh/config.local`.
 
-Release cooldown: GitHub release downloads (neovim, fd, lazygit, gh, nvm) take the newest release that's at least 7 days old, and npm/pnpm get the same window (`RELEASE_AGE_DAYS` in `setup.sh`). Homebrew, go and the rustup/starship/claude installers still install their latest.
+Release cooldown: GitHub release downloads (neovim, fd, lazygit, gh, nvm, pnpm) take the newest release that's at least 7 days old, and npm/pnpm get the same window (`RELEASE_AGE_DAYS` in `setup.sh`). Homebrew, go and the rustup/starship/claude installers still install their latest.
 
 Degrades gracefully without root/sudo: system packages are skipped, starship goes to `~/.local/bin`, and if `chsh` is blocked it adds a bash→zsh handoff instead.
 
