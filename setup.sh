@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================
 # Portable dev environment bootstrap — Martin Popov
-# Targets Ubuntu/Debian (apt). Usage: bash setup.sh
+# Targets Ubuntu/Debian (apt) and macOS (Homebrew, installed if missing).
+# Usage: bash setup.sh
 # Idempotent: safe to re-run.
 # ============================================================
 set -euo pipefail
@@ -13,6 +14,8 @@ log()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!\033[0m %s\n' "$*"; }
 
 # --- sudo shim (some boxes are root, some have no sudo) ------
+ARCH="$(uname -m)"
+OS="$(uname -s)"
 SUDO=""
 if [ "$(id -u)" -ne 0 ]; then
   if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; else
@@ -72,6 +75,30 @@ log "components:$COMPONENTS"
 # Config files (.zshrc, .tmux.conf, nvim/starship links, git identity) are
 # always written — that's the point of a dotfiles repo. Only installs are gated.
 
+# --- homebrew (macOS) ----------------------------------------
+# A fresh Mac has no brew, and everything below (tmux, fzf, neovim, gh, go,
+# the Brewfile casks…) comes from it. brew isn't on the default PATH either,
+# so put it there for this run; new shells get it from the .zshrc below.
+brew_env() {
+  local b
+  for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    [ -x "$b" ] && { eval "$("$b" shellenv)"; return 0; }
+  done
+  return 1
+}
+if [ "$OS" = "Darwin" ] && ! command -v brew >/dev/null 2>&1 && ! brew_env; then
+  log "installing homebrew (asks for your password once)"
+  # The installer goes non-interactive when stdin isn't a tty (curl | bash
+  # feeds it this script) and then only tries `sudo -n`, so cache sudo via
+  # the tty first; </dev/null stops it eating the rest of the piped script.
+  if sudo -v; then
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" </dev/null \
+      && brew_env || warn "homebrew install failed — install it from https://brew.sh and re-run"
+  else
+    warn "no sudo for homebrew — install it from https://brew.sh and re-run; skipping brew packages"
+  fi
+fi
+
 # --- system packages -----------------------------------------
 PKGS="zsh tmux git curl unzip ripgrep fzf htop jq"
 if command -v brew >/dev/null 2>&1; then # macOS — no sudo, and brew covers the binary installs below too
@@ -91,7 +118,7 @@ if command -v brew >/dev/null 2>&1; then # macOS — no sudo, and brew covers th
   if want base; then
     brew list --cask ghostty >/dev/null 2>&1 || brew install --cask --adopt ghostty || warn "ghostty install failed"
   fi
-elif want base && [ "$SUDO" != "skip" ]; then
+elif want base && [ "$OS" != "Darwin" ] && [ "$SUDO" != "skip" ]; then
   if command -v apt-get >/dev/null 2>&1; then
     log "installing packages (apt): $PKGS + build-essential"
     $SUDO apt-get update -qq
@@ -111,8 +138,6 @@ GH_AUTH=()
 [ -n "${GITHUB_TOKEN:-}" ] && GH_AUTH=(-H "Authorization: Bearer $GITHUB_TOKEN")
 
 # --- neovim (latest tarball, updates in place; apt's is old) --
-ARCH="$(uname -m)"
-OS="$(uname -s)"
 if want neovim && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ] && [ "$SUDO" != "skip" ]; then
   NVIM_LATEST="$(curl -fsSL ${GH_AUTH[@]+"${GH_AUTH[@]}"} https://api.github.com/repos/neovim/neovim/releases/latest \
     | sed -nE 's/.*"tag_name": *"(v[^"]+)".*/\1/p' || true)"
@@ -489,6 +514,12 @@ HISTFILE=~/.zsh_history
 HISTSIZE=50000
 SAVEHIST=50000
 setopt SHARE_HISTORY HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE INC_APPEND_HISTORY
+
+# Homebrew (macOS): not on the default PATH; completions must precede compinit
+for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+  [ -x "$b" ] && { eval "$("$b" shellenv)"; fpath=("$HOMEBREW_PREFIX/share/zsh/site-functions" $fpath); break; }
+done
+unset b
 
 # Completion menu
 autoload -Uz compinit && compinit

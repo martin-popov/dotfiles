@@ -12,6 +12,9 @@ curl -fsSL https://raw.githubusercontent.com/martin-popov/dotfiles/main/setup.sh
 
 It clones the repo to `~/dotfiles` (fetch over https, push over ssh).
 
+On a fresh Mac it installs Homebrew first (one sudo password prompt); every
+brew-provided tool and the Brewfile depend on it.
+
 Or without hosting, straight over ssh:
 
 ```bash
