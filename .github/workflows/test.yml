@@ -27,7 +27,7 @@ jobs:
       - name: fresh install
         run: bash setup.sh
       - name: tools work
-        run: zsh -ic "nvim --version | head -1; starship -V; fd --version; lazygit --version | head -1; rg --version | head -1; node -v; claude --version; go version; cargo --version"
+        run: zsh -ic "nvim --version | head -1; starship -V; fd --version; lazygit --version | head -1; rg --version | head -1; node -v; pnpm -v; sql-formatter --version; claude --version; go version; cargo --version"
       - name: nvim config loads
         run: nvim --headless "+lua assert(vim.g.colors_name == 'catppuccin', 'config did not load')" +qa
       - name: re-run is idempotent
@@ -36,4 +36,24 @@ jobs:
           cp ~/.zshrc /tmp/zshrc.before
           bash setup.sh
           cmp /tmp/bashrc.before ~/.bashrc   # would catch e.g. the duplicated zsh handoff
+          cmp /tmp/zshrc.before ~/.zshrc
+
+  # Homebrew paths, the darwin pnpm build, mac branches of setup.sh. Skips
+  # macos (system defaults) and macapps (casks) — runner state, not ours.
+  test-macos:
+    runs-on: macos-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: fresh install
+        run: bash setup.sh base node neovim cli starship claude go rust
+      - name: tools work
+        run: zsh -ic "nvim --version | head -1; starship -V; fd --version; lazygit --version | head -1; rg --version | head -1; node -v; pnpm -v; sql-formatter --version; claude --version; go version; cargo --version"
+      - name: nvim config loads
+        run: zsh -ic "nvim --headless \"+lua assert(vim.g.colors_name == 'catppuccin', 'config did not load')\" +qa"
+      - name: re-run is idempotent
+        run: |
+          cp ~/.zshrc /tmp/zshrc.before
+          bash setup.sh base node neovim cli starship claude go rust
           cmp /tmp/zshrc.before ~/.zshrc

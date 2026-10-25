@@ -72,7 +72,7 @@ MENU
 fi
 want() { case " $COMPONENTS " in *" $1 "*) ;; *) return 1 ;; esac; }
 log "components:$COMPONENTS"
-# Config files (.zshrc, .tmux.conf, nvim/starship links, git identity) are
+# Config files (.zshrc, .tmux.conf, nvim/starship links, git config) are
 # always written — that's the point of a dotfiles repo. Only installs are gated.
 
 # --- homebrew (macOS) ----------------------------------------
@@ -377,6 +377,11 @@ set -g mouse on
 setw -g mode-keys vi
 set -g focus-events on
 
+# new windows and splits open in the current pane's directory
+bind c new-window -c "#{pane_current_path}"
+bind '"' split-window -c "#{pane_current_path}"
+bind % split-window -h -c "#{pane_current_path}"
+
 # true color (RGB) passthrough — without this 24-bit colors get
 # quantized to the 256-color palette (Latte #EFF1F5 -> #EEEEEE)
 set -g default-terminal "tmux-256color"
@@ -423,9 +428,31 @@ if [ ! -e "$HOME/.ssh/config" ]; then
   chmod 600 "$HOME/.ssh/config"
 fi
 
-# --- git identity (only if unset) ----------------------------
-git config --global user.name  >/dev/null 2>&1 || git config --global user.name  "$GIT_NAME"
-git config --global user.email >/dev/null 2>&1 || git config --global user.email "$GIT_EMAIL"
+# --- git identity + defaults (each only if unset) -------------
+git_default() { git config --global "$1" >/dev/null 2>&1 || git config --global "$1" "$2"; }
+git_default user.name  "$GIT_NAME"
+git_default user.email "$GIT_EMAIL"
+git_default init.defaultBranch main
+git_default push.autoSetupRemote true # first push of a new branch needs no -u
+git_default pull.rebase true
+git_default rebase.autoStash true
+# global ignores: git reads ~/.config/git/ignore without any core.excludesFile
+mkdir -p "$HOME/.config/git"
+grep -qsx '.DS_Store' "$HOME/.config/git/ignore" || echo '.DS_Store' >> "$HOME/.config/git/ignore"
+# Sign commits and tags with the GitHub ssh key once it's on this machine
+# (copied per machine, never in the repo). GitHub shows them Verified once
+# the same key is added there as a signing key; allowed_signers lets
+# `git log --show-signature` verify locally too.
+SIGNING_KEY="$HOME/.ssh/martin-popoff.pub"
+if [ -f "$SIGNING_KEY" ]; then
+  git_default gpg.format ssh
+  git_default user.signingkey "$SIGNING_KEY"
+  git_default commit.gpgsign true
+  git_default tag.gpgsign true
+  git_default gpg.ssh.allowedSignersFile "$HOME/.config/git/allowed_signers"
+  printf '%s namespaces="git" %s\n' "$GIT_EMAIL" "$(cut -d' ' -f1,2 "$SIGNING_KEY")" \
+    > "$HOME/.config/git/allowed_signers"
+fi
 
 # --- ~/.config/starship.toml (lives in this repo) ------------
 log "linking ~/.config/starship.toml"
@@ -482,11 +509,14 @@ if want macos && [ "$OS" = "Darwin" ]; then
   defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
   defaults write com.apple.finder _FXSortFoldersFirst -bool true
   defaults write com.apple.finder NewWindowTarget -string "PfDe"
-  # dock contents: Zen + Zed only
+  # no .DS_Store litter on network shares (the NAS) or USB drives
+  defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+  defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
+  # dock contents: Zen + Ghostty only
   if command -v dockutil >/dev/null 2>&1; then
     dockutil --remove all --no-restart || true
     [ -d /Applications/Zen.app ] && dockutil --add /Applications/Zen.app --no-restart
-    [ -d /Applications/Zed.app ] && dockutil --add /Applications/Zed.app --no-restart
+    [ -d /Applications/Ghostty.app ] && dockutil --add /Applications/Ghostty.app --no-restart
   else
     warn "dockutil not installed — skipping Dock contents"
   fi
@@ -540,6 +570,10 @@ if [ -f "$HOME/.zshrc" ] && [ ! -f "$HOME/.zshrc.pre-setup" ]; then
 fi
 log "writing ~/.zshrc"
 cat > "$HOME/.zshrc" <<'EOF'
+# No duplicate PATH entries when shells nest (tmux, editors, claude). Both
+# halves: tools prepend via the PATH string, which -U on path alone ignores
+typeset -U PATH path FPATH fpath
+
 # History (so autosuggestions have something to suggest)
 HISTFILE=~/.zsh_history
 HISTSIZE=50000

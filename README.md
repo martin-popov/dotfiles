@@ -21,7 +21,7 @@ Or without hosting, straight over ssh:
 ssh user@box 'bash -s' < setup.sh
 ```
 
-Idempotent — re-run any time to update (pulls latest neovim/go, keeps configs in sync).
+Idempotent — re-run any time to update (pulls newer neovim/go/pnpm, keeps configs in sync).
 
 Run from a terminal, it asks which components to install (Enter = everything).
 Non-interactive runs (`curl | bash`, CI, ssh heredoc) install everything;
@@ -41,20 +41,42 @@ bash setup.sh base go        # or: COMPONENTS="base go" bash setup.sh
 - **claude** — Claude Code + settings: opus at high effort, vim editor mode, classic renderer; merges into an existing settings.json without clobbering it
 - **go** — latest official tarball into `/usr/local/go`, updated on re-run (brew on macOS)
 - **rust** — rustup + stable toolchain into `~/.cargo`
-- **macos** — system defaults (fast key repeat, dock autohide/size/no-recents/scale minimize, finder path bar + list view, dock contents via dockutil); no-op on Linux
+- **macos** — system defaults (fast key repeat, dock autohide/size/no-recents/scale minimize, finder path bar + list view, no `.DS_Store` on network/USB drives, dock with just Zen + Ghostty via dockutil); no-op on Linux
 - **macapps** — `brew bundle` of the Brewfile: casks (zed, zen, raycast, karabiner-elements, obsidian, docker-desktop, …) + mac-only CLI extras (git-lfs, uv, mas, xcode-build-server); no-op on Linux
 
 Config files (`.zshrc`, `.tmux.conf`, nvim/starship/zed links, karabiner +
-ghostty links on macOS, `~/.ssh/config` if missing, git identity if unset)
+ghostty links on macOS, `~/.ssh/config` if missing, git identity + defaults if unset)
 are always written regardless of selection. `~/Developer` is created too, and
 new Ghostty windows and zsh shells start there. Private ssh hosts belong in the
 untracked `~/.ssh/config.local`.
+
+Git defaults: `main` as the default branch, rebase on pull (with autostash),
+first push sets the upstream, global ignore for `.DS_Store`. Once
+`~/.ssh/martin-popoff.pub` exists, commits and tags are signed with it.
 
 Release cooldown: GitHub release downloads (neovim, fd, lazygit, gh, nvm, pnpm) take the newest release that's at least 7 days old, and npm/pnpm get the same window (`RELEASE_AGE_DAYS` in `setup.sh`). Homebrew, go and the rustup/starship/claude installers still install their latest.
 
 Degrades gracefully without root/sudo: system packages are skipped, starship goes to `~/.local/bin`, and if `chsh` is blocked it adds a bash→zsh handoff instead.
 
 Existing `~/.zshrc` is backed up to `~/.zshrc.pre-setup` on first run. Machine-specific PATHs/aliases go in `~/.zshrc.local` (sourced if present, never touched by setup).
+
+## After setup
+
+What the script can't do on its own, roughly in order:
+
+1. **ssh key** — copy the GitHub key into `~/.ssh/` (`chmod 600`), add a
+   `Host github.com` entry with its `IdentityFile` to `~/.ssh/config.local`,
+   check with `ssh -T git@github.com`, then re-run `setup.sh` so commit
+   signing picks it up.
+2. **GitHub CLI** — `gh auth login` (GitHub.com → SSH → the existing key).
+3. **Verified commits** — register the same key for signing:
+   `gh auth refresh -s admin:ssh_signing_key`, then
+   `gh ssh-key add ~/.ssh/martin-popoff.pub --type signing`.
+4. **Font Awesome** — `FONTAWESOME_NPM_AUTH_TOKEN=<token> bash setup.sh node`.
+5. **Log out and back in** — key repeat and sound defaults only apply then.
+6. **App permissions** — open Karabiner-Elements and Raycast once and grant
+   what they ask for (Input Monitoring, Accessibility); Docker Desktop has a
+   first-launch setup.
 
 ## Windows key remaps
 
@@ -100,4 +122,4 @@ ssh dev@localhost -p 2222   # password: dev, passwordless sudo
 ```
 
 CI (`.github/workflows/test.yml`) runs a fresh install + idempotent re-run on
-Ubuntu and Debian containers weekly and on push.
+Ubuntu and Debian containers and a macOS runner, weekly and on push.
