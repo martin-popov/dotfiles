@@ -2,6 +2,8 @@
 # Catppuccin follows macOS appearance; the `theme` command flips appearance.
 theme = light:Catppuccin Latte,dark:Catppuccin Mocha
 working-directory = ~/Developer
+# ssh copies the xterm-ghostty terminfo to hosts that lack it (falls back to xterm-256color)
+shell-integration-features = ssh-terminfo,ssh-env
 font-size = 15
 font-family = JetBrains Mono
 # font-style = Light

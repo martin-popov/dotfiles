@@ -462,6 +462,13 @@ ln -sf "$DOTS/starship.toml" "$HOME/.config/starship.toml"
 if [ "$OS" = "Darwin" ]; then
   mkdir -p "$HOME/.config/ghostty"
   ln -sf "$DOTS/ghostty" "$HOME/.config/ghostty/config"
+  # Ghostty's terminfo lives in its app bundle and only Ghostty's own shells see it;
+  # copy it to ~/.terminfo so ssh sessions into this Mac know TERM=xterm-ghostty
+  GHOSTTY_TI=/Applications/Ghostty.app/Contents/Resources/terminfo
+  if [ -d "$GHOSTTY_TI" ] && ! env -u TERMINFO infocmp xterm-ghostty >/dev/null 2>&1; then
+    TERMINFO="$GHOSTTY_TI" infocmp -x xterm-ghostty | env -u TERMINFO tic -x - 2>/dev/null \
+      || warn "ghostty terminfo install failed"
+  fi
 fi
 
 # --- zed (all platforms) + karabiner (macOS) configs ----------
