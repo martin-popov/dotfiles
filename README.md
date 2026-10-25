@@ -54,6 +54,13 @@ Git defaults: `main` as the default branch, rebase on pull (with autostash),
 first push sets the upstream, global ignore for `.DS_Store`. Once
 `~/.ssh/martin-popov.pub` exists, commits and tags are signed with it.
 
+`lid` (macOS) keeps the Mac awake with the lid closed while you're away:
+`lid off` (default 8h, or e.g. `lid off 3h` / `lid off 90m`), `lid on`, and
+plain `lid` for the current state. It reverts on its own when the time is up or
+the battery drops below 20% on battery power, via a LaunchAgent that checks
+every minute. A sudoers rule (installed with the `macos` component, one password
+prompt) lets it run exactly `pmset -a disablesleep 0|1` without a password.
+
 Release cooldown: GitHub release downloads (neovim, fd, lazygit, gh, nvm, pnpm) take the newest release that's at least 7 days old, and npm/pnpm get the same window (`RELEASE_AGE_DAYS` in `setup.sh`). Homebrew, go and the rustup/starship/claude installers still install their latest.
 
 Degrades gracefully without root/sudo: system packages are skipped, starship goes to `~/.local/bin`, and if `chsh` is blocked it adds a bash→zsh handoff instead.

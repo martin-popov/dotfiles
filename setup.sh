@@ -563,6 +563,45 @@ EOF
     || warn "launchctl bootstrap failed — theme-sync loads on next login"
 fi
 
+# --- lid (macOS): stay awake with the lid closed, auto-reverting --
+# `lid off` needs pmset as root; a sudoers rule allows exactly the two
+# disablesleep commands without a password (one sudo prompt to install it).
+# The LaunchAgent runs `lid check` every minute to enforce the deadline and
+# battery floor — a no-op unless lid is holding sleep off.
+if [ "$OS" = "Darwin" ]; then
+  ln -sf "$DOTS/lid" "$HOME/.local/bin/lid"
+  # look for the rule itself: `sudo -l <cmd>` passes for any admin, since
+  # they may run anything — with a password
+  if want macos && ! sudo -n -l 2>/dev/null | grep -qF 'NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1'; then
+    log "installing sudoers rule for lid (asks for your password)"
+    LID_RULE="$(mktemp)"
+    echo "$(id -un) ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1" > "$LID_RULE"
+    { sudo visudo -cqf "$LID_RULE" && sudo install -m 0440 -o root -g wheel "$LID_RULE" /etc/sudoers.d/lid; } \
+      || warn "couldn't install the lid sudoers rule — lid off/on will fail until it's there"
+    rm -f "$LID_RULE"
+  fi
+  LID_PLIST="$HOME/Library/LaunchAgents/com.martinpopov.lid.plist"
+  cat > "$LID_PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.martinpopov.lid</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$HOME/.local/bin/lid</string>
+    <string>check</string>
+  </array>
+  <key>StartInterval</key><integer>60</integer>
+  <key>RunAtLoad</key><true/>
+</dict>
+</plist>
+EOF
+  launchctl bootout "gui/$(id -u)/com.martinpopov.lid" 2>/dev/null || true
+  launchctl bootstrap "gui/$(id -u)" "$LID_PLIST" 2>/dev/null \
+    || warn "launchctl bootstrap failed — the lid check loads on next login"
+fi
+
 # --- ~/.zshrc ------------------------------------------------
 if [ -f "$HOME/.zshrc" ] && [ ! -f "$HOME/.zshrc.pre-setup" ]; then
   cp "$HOME/.zshrc" "$HOME/.zshrc.pre-setup"
