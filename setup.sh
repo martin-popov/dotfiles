@@ -268,6 +268,14 @@ if want node; then
   # Explicitly set, pnpm also blocks younger versions outright.
   "$HOME/.local/bin/pnpm" config set --global minimumReleaseAge $((RELEASE_AGE_DAYS * 24 * 60)) >/dev/null 2>&1 \
     || warn "couldn't set pnpm minimumReleaseAge"
+  # global JS CLIs (zed formats SQL with sql-formatter); bins land in
+  # $PNPM_HOME/bin and run on nvm's node
+  export PNPM_HOME="$HOME/.local/share/pnpm" PATH="$HOME/.local/share/pnpm/bin:$PATH"
+  PNPM_GLOBALS="sql-formatter"
+  for tool in $PNPM_GLOBALS; do
+    [ -x "$PNPM_HOME/bin/$tool" ] || "$HOME/.local/bin/pnpm" add -g "$tool" >/dev/null 2>&1 \
+      || warn "pnpm add -g $tool failed"
+  done
 fi
 
 # --- go (official tarball; apt's lags several releases) --------
@@ -582,11 +590,11 @@ alias lsa='ls -lah'
 
 export PATH="$HOME/.local/bin:$PATH"
 
-# pnpm only. Global installs (pnpm add -g) land in PNPM_HOME. npm/npx stay
+# pnpm only. Global installs (pnpm add -g) land in $PNPM_HOME/bin. npm/npx stay
 # installed for tools that call them (nvm, Mason) but typing them is
 # blocked; `command npm …` gets through when something really needs it.
 export PNPM_HOME="$HOME/.local/share/pnpm"
-export PATH="$PNPM_HOME:$PATH"
+export PATH="$PNPM_HOME/bin:$PATH"
 npm() { print -u2 "npm is off here — use pnpm (escape hatch: command npm $*)"; return 1; }
 npx() { print -u2 "npx is off here — use pnpm dlx (escape hatch: command npx $*)"; return 1; }
 alias pnpx='pnpm dlx'

@@ -34,7 +34,7 @@ bash setup.sh base go        # or: COMPONENTS="base go" bash setup.sh
 ## Components
 
 - **base** — zsh (default shell; vi mode, shared history, autosuggestions, syntax highlighting), tmux, git, **fzf** (fuzzy Ctrl-R / Ctrl-T), **ripgrep**, **htop**, jq, build tools
-- **node** — nvm + Node LTS + standalone pnpm (no corepack — Node 25+ dropped it). pnpm only: typing `npm`/`npx` in zsh is blocked (`command npm` bypasses), npm stays installed for nvm and Mason. Both only install package versions at least 7 days old
+- **node** — nvm + Node LTS + standalone pnpm (no corepack — Node 25+ dropped it). pnpm only: typing `npm`/`npx` in zsh is blocked (`command npm` bypasses), npm stays installed for nvm and Mason. npm and pnpm only install package versions at least 7 days old. Global JS CLIs (sql-formatter for Zed) come from `pnpm add -g`
 - **neovim** — newest release tarball at least 7 days old into `/opt`, updated on re-run; config is the repo's `nvim/` (LazyVim + catppuccin, explorer right, BG phonetic langmap, lang extras), symlinked to `~/.config/nvim` with plugins pinned via `lazy-lock.json`
 - **cli** — fd, lazygit, gh (release binaries into `~/.local/bin`)
 - **starship** prompt (minimal single-line: dir + git + prompt char)

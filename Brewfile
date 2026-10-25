@@ -6,7 +6,6 @@
 cask_args adopt: true
 brew "git-lfs"
 brew "tree"
-brew "sql-formatter"
 brew "uv"
 # sw: make lint needs shellcheck; secrets/ are sops+age (go tools are pinned via go run)
 brew "shellcheck"
