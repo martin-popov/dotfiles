@@ -46,7 +46,8 @@ bash setup.sh base go        # or: COMPONENTS="base go" bash setup.sh
 
 Config files (`.zshrc`, `.tmux.conf`, nvim/starship/zed links, karabiner +
 ghostty links on macOS, `~/.ssh/config` if missing, git identity if unset)
-are always written regardless of selection. Private ssh hosts belong in the
+are always written regardless of selection. `~/Developer` is created too, and
+new Ghostty windows and zsh shells start there. Private ssh hosts belong in the
 untracked `~/.ssh/config.local`.
 
 Degrades gracefully without root/sudo: system packages are skipped, starship goes to `~/.local/bin`, and if `chsh` is blocked it adds a bash→zsh handoff instead.

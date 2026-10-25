@@ -129,7 +129,7 @@ elif want base && [ "$OS" != "Darwin" ] && [ "$SUDO" != "skip" ]; then
   fi
 fi
 
-mkdir -p "$HOME/.local/bin" "$HOME/.config" "$HOME/.zsh"
+mkdir -p "$HOME/.local/bin" "$HOME/.config" "$HOME/.zsh" "$HOME/Developer" # projects live here; ghostty + zsh start in it
 # so command -v sees tools we installed on previous runs (idempotency)
 export PATH="$HOME/.local/bin:$PATH"
 
@@ -543,6 +543,10 @@ alias la='ls -lAh'
 alias lsa='ls -lah'
 
 export PATH="$HOME/.local/bin:$PATH"
+
+# Start in ~/Developer. Ghostty sets this itself; this covers Terminal.app,
+# ssh, tmux. Only from $HOME, so editor terminals keep their project dir.
+[[ $PWD == "$HOME" && -d ~/Developer ]] && cd ~/Developer
 
 # Toolchains from setup.sh — no-ops on boxes that skipped them
 [ -d /usr/local/go/bin ] && export PATH="$PATH:/usr/local/go/bin:$HOME/go/bin"
