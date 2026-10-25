@@ -10,6 +10,8 @@ On a fresh box:
 curl -fsSL https://raw.githubusercontent.com/martin-popov/dotfiles/main/setup.sh | bash
 ```
 
+It clones the repo to `~/dotfiles` (fetch over https, push over ssh).
+
 Or without hosting, straight over ssh:
 
 ```bash

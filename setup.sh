@@ -248,6 +248,8 @@ if [ -n "$SELF" ] && [ -d "$(cd "$(dirname "$SELF")" && pwd)/nvim" ]; then
 elif [ ! -d "$DOTS/nvim" ]; then
   log "cloning dotfiles repo -> $DOTS"
   git clone --depth 1 https://github.com/martin-popov/dotfiles "$DOTS"
+  # fetch keyless over https; push over ssh once keys are in place
+  git -C "$DOTS" remote set-url --push origin git@github.com:martin-popov/dotfiles
 fi
 if [ -e "$HOME/.config/nvim" ] && [ ! -L "$HOME/.config/nvim" ]; then
   mv "$HOME/.config/nvim" "$HOME/.config/nvim.pre-setup"
