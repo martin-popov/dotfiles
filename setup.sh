@@ -42,7 +42,7 @@ What should this box get?
   3) neovim    latest tarball + LazyVim config from this repo
   4) cli       fd, lazygit, gh
   5) starship  prompt
-  6) claude    claude code + plugin settings
+  6) claude    claude code + settings (opus, vim mode)
   7) go        latest toolchain -> /usr/local/go (brew on macOS)
   8) rust      rustup + stable toolchain
   9) macos     system defaults: keyboard/dock/finder (Darwin only)
@@ -286,40 +286,21 @@ if command -v nvim >/dev/null 2>&1; then
   nvim --headless "+Lazy! restore" +qa >/dev/null 2>&1 || warn "plugin restore had errors — run :Lazy restore inside nvim"
 fi
 
-# --- claude code settings (plugins, vim mode, theme) ---------
-# Claude Code reconciles enabledPlugins/extraKnownMarketplaces on startup,
-# so listing them here is enough — plugins auto-install on first run.
+# --- claude code settings (model, effort, vim mode, theme) ----
+# No plugins: effort lives under modelSettings (top-level effortLevel is
+# ignored for Opus 5.5+ and shadowed by the per-model entry anyway).
 if want claude; then
 mkdir -p "$HOME/.claude"
 CLAUDE_SETTINGS="$(cat <<'EOF'
 {
-  "model": "claude-fable-5-1[1m]",
-  "enabledPlugins": {
-    "frontend-design@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": true,
-    "context7@claude-plugins-official": true,
-    "playwright@claude-plugins-official": true,
-    "github@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true,
-    "gopls-lsp@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": true,
-    "swift-lsp@claude-plugins-official": true,
-    "ponytail@ponytail": true
-  },
-  "extraKnownMarketplaces": {
-    "ponytail": {
-      "source": {
-        "source": "github",
-        "repo": "DietrichGebert/ponytail"
-      }
-    }
+  "model": "opus",
+  "modelSettings": {
+    "claude-opus-5-5": { "effortLevel": "high" }
   },
   "theme": "auto",
   "tui": "default",
   "editorMode": "vim",
   "remoteControlAtStartup": false,
-  "alwaysThinkingEnabled": true,
-  "effortLevel": "xhigh",
   "agentPushNotifEnabled": true
 }
 EOF
@@ -336,11 +317,6 @@ else
   # shellcheck disable=SC2088 # the ~ is message prose, not a path
   warn "~/.claude/settings.json exists and jq is missing — merge manually from the repo's setup.sh"
 fi
-
-# --- ponytail: plugin on, but inert until /ponytail <level> ---
-log "writing ~/.config/ponytail/config.json (defaultMode: off)"
-mkdir -p "$HOME/.config/ponytail"
-printf '{\n  "defaultMode": "off"\n}\n' > "$HOME/.config/ponytail/config.json"
 fi # want claude
 
 # --- ~/.tmux.conf --------------------------------------------

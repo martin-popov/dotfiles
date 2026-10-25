@@ -38,7 +38,7 @@ bash setup.sh base go        # or: COMPONENTS="base go" bash setup.sh
 - **neovim** — latest release tarball into `/opt`, updated on re-run; config is the repo's `nvim/` (LazyVim + catppuccin, explorer right, BG phonetic langmap, lang extras), symlinked to `~/.config/nvim` with plugins pinned via `lazy-lock.json`
 - **cli** — fd, lazygit, gh (release binaries into `~/.local/bin`)
 - **starship** prompt (minimal single-line: dir + git + prompt char)
-- **claude** — Claude Code + settings: vim editor mode, plugins (superpowers, context7, playwright, github, frontend-design, TS/Go/Rust LSPs, ponytail) — auto-installed by Claude Code on first run; merges into an existing settings.json without clobbering it
+- **claude** — Claude Code + settings: opus at high effort, vim editor mode, classic renderer; merges into an existing settings.json without clobbering it
 - **go** — latest official tarball into `/usr/local/go`, updated on re-run (brew on macOS)
 - **rust** — rustup + stable toolchain into `~/.cargo`
 - **macos** — system defaults (fast key repeat, dock autohide/size/no-recents, finder path bar + list view, dock contents via dockutil); no-op on Linux
