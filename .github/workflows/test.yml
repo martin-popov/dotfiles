@@ -1,7 +1,7 @@
 name: test
 on:
   push:
-    paths: [setup.sh, .github/workflows/test.yml]
+    paths: [setup.sh, theme, lid, .github/workflows/test.yml]
   schedule:
     - cron: '0 6 * * 1' # weekly: catch upstream drift (moved URLs, API changes)
   workflow_dispatch:
