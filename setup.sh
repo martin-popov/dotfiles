@@ -137,16 +137,31 @@ export PATH="$HOME/.local/bin:$PATH"
 GH_AUTH=()
 [ -n "${GITHUB_TOKEN:-}" ] && GH_AUTH=(-H "Authorization: Bearer $GITHUB_TOKEN")
 
+# Release cooldown: GitHub downloads take the newest release that's at least
+# a week old — a compromised release is usually caught and pulled by then.
+# npm/pnpm get the same window below. Highest version wins, so a backport
+# patch published after a newer major doesn't downgrade us.
+RELEASE_AGE_DAYS=7
+RELEASE_CUTOFF="$(date -u -d "$RELEASE_AGE_DAYS days ago" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
+  || date -u -v-"$RELEASE_AGE_DAYS"d +%Y-%m-%dT%H:%M:%SZ)" # GNU || BSD date
+gh_latest_tag() { # repo -> newest tag (e.g. v1.2.3) published before the cutoff
+  curl -fsSL ${GH_AUTH[@]+"${GH_AUTH[@]}"} "https://api.github.com/repos/$1/releases?per_page=30" \
+    | awk -F'"' -v cutoff="$RELEASE_CUTOFF" '
+        /"tag_name":/     { tag = $4 }
+        /"prerelease":/   { pre = /true/ }
+        /"published_at":/ { if (!pre && tag ~ /^v?[0-9]/ && $4 != "" && $4 <= cutoff) print tag }' \
+    | sort -V | tail -1
+}
+
 # --- neovim (latest tarball, updates in place; apt's is old) --
 if want neovim && [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ] && [ "$SUDO" != "skip" ]; then
-  NVIM_LATEST="$(curl -fsSL ${GH_AUTH[@]+"${GH_AUTH[@]}"} https://api.github.com/repos/neovim/neovim/releases/latest \
-    | sed -nE 's/.*"tag_name": *"(v[^"]+)".*/\1/p' || true)"
+  NVIM_LATEST="$(gh_latest_tag neovim/neovim)" || true
   NVIM_HAVE=""
   command -v nvim >/dev/null 2>&1 && NVIM_HAVE="v$(nvim --version | head -1 | sed 's/^NVIM v//')"
   if [ -n "$NVIM_LATEST" ] && [ "$NVIM_HAVE" != "$NVIM_LATEST" ]; then
     log "installing neovim $NVIM_LATEST (had: ${NVIM_HAVE:-none})"
     curl -fsSL -o /tmp/nvim.tar.gz \
-      https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+      "https://github.com/neovim/neovim/releases/download/$NVIM_LATEST/nvim-linux-x86_64.tar.gz"
     $SUDO rm -rf /opt/nvim-linux-x86_64
     $SUDO tar -C /opt -xzf /tmp/nvim.tar.gz
     $SUDO ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
@@ -159,10 +174,6 @@ elif want neovim && ! command -v nvim >/dev/null 2>&1; then
 fi
 
 # --- fd + lazygit + gh (binaries -> ~/.local/bin, no sudo needed) --
-gh_latest_tag() { # repo -> tag_name (e.g. v1.2.3)
-  curl -fsSL ${GH_AUTH[@]+"${GH_AUTH[@]}"} "https://api.github.com/repos/$1/releases/latest" \
-    | sed -nE 's/.*"tag_name": *"(v?[^"]+)".*/\1/p'
-}
 fetch_bin() { # <name> <repo> <asset printf pattern> <full|strip — version form in asset>
   local name="$1" repo="$2" pattern="$3" tag v dir
   command -v "$name" >/dev/null 2>&1 && return 0
@@ -221,7 +232,12 @@ if want node; then
       # node; pin latest so fresh machines don't start on an old release.
       # Repos with a packageManager field still get their pinned version.
       corepack install -g pnpm@latest 2>/dev/null || true
+      # same week-long cooldown for packages (minutes; pnpm's own default is
+      # a day). Explicitly set, pnpm also blocks younger versions outright.
+      COREPACK_ENABLE_DOWNLOAD_PROMPT=0 pnpm config set --global minimumReleaseAge $((RELEASE_AGE_DAYS * 24 * 60)) >/dev/null 2>&1 \
+        || warn "couldn't set pnpm minimumReleaseAge"
     fi
+    npm config set min-release-age "$RELEASE_AGE_DAYS" 2>/dev/null || warn "couldn't set npm min-release-age" # days
     # fontawesome: repos route the @fortawesome scope in their .npmrc; the
     # auth token belongs in ~/.npmrc so pnpm/npm find it without any .env.
     if ! grep -qs 'npm\.fontawesome\.com/:_authToken' "$HOME/.npmrc"; then
@@ -285,9 +301,11 @@ if command -v nvim >/dev/null 2>&1; then
   log "restoring nvim plugins from lazy-lock.json"
   nvim --headless "+Lazy! restore" +qa >/dev/null 2>&1 || warn "plugin restore had errors — run :Lazy restore inside nvim"
   # a first install clones at HEAD and rewrites the lock; a second pass
-  # against the committed pins checks out the pinned commits
-  if ! git -C "$DOTS" diff --quiet -- nvim/lazy-lock.json 2>/dev/null; then
-    git -C "$DOTS" checkout -- nvim/lazy-lock.json
+  # against the committed pins checks out the pinned commits. status prints
+  # nothing when git refuses the repo (CI: checkout owned by another uid),
+  # so that case and a read-only checkout both just skip the second pass.
+  if [ -n "$(git -C "$DOTS" status --porcelain -- nvim/lazy-lock.json 2>/dev/null)" ] \
+    && git -C "$DOTS" checkout -- nvim/lazy-lock.json 2>/dev/null; then
     nvim --headless "+Lazy! restore" +qa >/dev/null 2>&1 || true
   fi
 fi
@@ -430,6 +448,7 @@ if want macos && [ "$OS" = "Darwin" ]; then
   defaults write com.apple.dock mru-spaces -bool false
   defaults write com.apple.dock show-recents -bool false
   defaults write com.apple.dock minimize-to-application -bool true
+  defaults write com.apple.dock mineffect -string scale
   defaults write com.apple.dock wvous-br-corner -int 1
   # finder: path bar, list view, folders first, new windows open Desktop
   defaults write com.apple.finder ShowPathbar -bool true
