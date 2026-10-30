@@ -574,7 +574,7 @@ fi
 # `lid off` needs pmset as root; a sudoers rule allows exactly the two
 # disablesleep commands without a password (one sudo prompt to install it).
 # The LaunchAgent runs `lid check` every minute to enforce the deadline and
-# battery floor — a no-op unless lid is holding sleep off.
+# battery floor (pausing below it, resuming after) — a no-op unless lid is holding sleep off.
 if [ "$OS" = "Darwin" ]; then
   ln -sf "$DOTS/lid" "$HOME/.local/bin/lid"
   # look for the rule itself: `sudo -l <cmd>` passes for any admin, since
